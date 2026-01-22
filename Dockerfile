@@ -1,14 +1,23 @@
-FROM golang:1.23.5-bookworm AS builder
-ARG VERSION=prod
+FROM golang:1.24-alpine AS builder
+
 WORKDIR /app
+
+RUN apk add --no-cache git ca-certificates
+
+COPY go.mod go.sum ./
+
+RUN go mod download
+
 COPY . .
-RUN go mod tidy
-RUN go build -o lucky
 
-FROM debian:bookworm
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /lucky-tgbot .
+
+FROM alpine:3.19
+
+RUN apk add --no-cache ca-certificates tzdata
+
 WORKDIR /app
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=builder /app/lucky .
-COPY --from=builder /app/plugin ./plugin
 
-CMD ["./lucky"]
+COPY --from=builder /lucky-tgbot .
+
+CMD ["./lucky-tgbot"]

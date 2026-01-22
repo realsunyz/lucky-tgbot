@@ -44,8 +44,7 @@ func main() {
 		}),
 	}
 
-	//b, err := bot.New(os.Getenv("TOKEN"), opts...)
-	b, err := bot.New("7632804925:AAHdSuWkV-Jpxg4t1-MQu9MJyuyJN9vvqQA", opts...)
+	b, err := bot.New(os.Getenv("TELEGRAM_BOT_TOKEN"), opts...)
 	if err != nil {
 		log.Fatal("Error creating bot: ", err)
 		return
