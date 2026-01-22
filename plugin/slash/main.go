@@ -1,11 +1,13 @@
 package slash
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"unicode"
 
-	tele "gopkg.in/telebot.v3"
+	"github.com/go-telegram/bot"
+	"github.com/go-telegram/bot/models"
 )
 
 func isASCII(s string) bool {
@@ -34,15 +36,16 @@ func genName(firstName, lastName string) string {
 	return firstName
 }
 
-func genLink(c tele.Context) (string, string) {
-	senderURI := fmt.Sprintf("tg://user?id=%d", c.Message().Sender.ID)
-	senderName := genName(c.Message().Sender.FirstName, c.Message().Sender.LastName)
+func genLink(update *models.Update) (string, string) {
+	msg := update.Message
+	senderURI := fmt.Sprintf("tg://user?id=%d", msg.From.ID)
+	senderName := genName(msg.From.FirstName, msg.From.LastName)
 
 	// Message is sent on behalf of a Channel or Group
-	if c.Message().SenderChat != nil {
-		chatID := -1 * (c.Message().SenderChat.ID % 10000000000)
+	if msg.SenderChat != nil {
+		chatID := -1 * (msg.SenderChat.ID % 10000000000)
 		senderURI = fmt.Sprintf("https://t.me/c/%d", chatID)
-		senderName = c.Message().SenderChat.Title
+		senderName = msg.SenderChat.Title
 	}
 
 	// Message is NOT a reply to others by default
@@ -50,29 +53,29 @@ func genLink(c tele.Context) (string, string) {
 	replyToName := "自己"
 
 	// Message is a reply to others
-	if c.Message().IsReply() {
-		replyToURI = fmt.Sprintf("tg://user?id=%d", c.Message().ReplyTo.Sender.ID)
-		replyToName = genName(c.Message().ReplyTo.Sender.FirstName, c.Message().ReplyTo.Sender.LastName)
+	if msg.ReplyToMessage != nil {
+		replyToURI = fmt.Sprintf("tg://user?id=%d", msg.ReplyToMessage.From.ID)
+		replyToName = genName(msg.ReplyToMessage.From.FirstName, msg.ReplyToMessage.From.LastName)
 
 		// Message replied to was sent on behalf of a Channel or Group
-		if c.Message().ReplyTo.SenderChat != nil {
-			chatID := -1 * (c.Message().ReplyTo.SenderChat.ID % 10000000000)
+		if msg.ReplyToMessage.SenderChat != nil {
+			chatID := -1 * (msg.ReplyToMessage.SenderChat.ID % 10000000000)
 			replyToURI = fmt.Sprintf("https://t.me/c/%d", chatID)
-			replyToName = c.Message().ReplyTo.SenderChat.Title
+			replyToName = msg.ReplyToMessage.SenderChat.Title
 		}
 	}
 
 	// Feature: Specify the user who is the target of the action using an At Sign (@)
-	if len(c.Message().Entities) != 0 {
-		if c.Message().Entities[0].Type == "text_mention" {
+	if len(msg.Entities) != 0 {
+		if msg.Entities[0].Type == models.MessageEntityTypeTextMention {
 			// User does NOT have a public username
-			replyToURI = fmt.Sprintf("tg://user?id=%d", c.Message().Entities[0].User.ID)
-			replyToName = genName(c.Message().Entities[0].User.FirstName, c.Message().Entities[0].User.LastName)
-		} else if c.Message().Entities[0].Type == "mention" {
+			replyToURI = fmt.Sprintf("tg://user?id=%d", msg.Entities[0].User.ID)
+			replyToName = genName(msg.Entities[0].User.FirstName, msg.Entities[0].User.LastName)
+		} else if msg.Entities[0].Type == models.MessageEntityTypeMention {
 			// User have a public username
-			t := strings.Index(c.Text(), " @")
+			t := strings.Index(msg.Text, " @")
 			if t != -1 {
-				pubUserName := c.Text()[t:]
+				pubUserName := msg.Text[t:]
 				replyToName = strings.TrimSpace(pubUserName)
 			}
 			// User ID can NOT be obtained if only public usernames are provided
@@ -90,27 +93,34 @@ func genLink(c tele.Context) (string, string) {
 	return senderLink, replyToLink
 }
 
-func Execute(c tele.Context) error {
-	inputText := c.Text()
+func Execute(ctx context.Context, b *bot.Bot, update *models.Update) {
+	if update.Message == nil {
+		return
+	}
+
+	inputText := update.Message.Text
 
 	if !isValid(inputText) {
-		return nil
+		return
 	}
 
 	actions := strings.SplitN(strings.Replace(inputText, "$", "", 1)[1:], " ", 3)
 
 	if len(actions) != 1 && len(actions) != 2 && len(actions) != 3 {
-		return nil
+		return
 	}
 
-	senderLink, replyToLink := genLink(c)
+	senderLink, replyToLink := genLink(update)
 
 	outputText := fmt.Sprintf("%s %s了 %s", senderLink, actions[0], replyToLink)
 	if len(actions) == 2 || len(actions) == 3 {
 		outputText = fmt.Sprintf("%s %s了 %s %s", senderLink, actions[0], replyToLink, actions[1])
 	}
 
-	return c.Reply(outputText, &tele.SendOptions{
-		ParseMode: "Markdown",
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:          update.Message.Chat.ID,
+		Text:            outputText,
+		ParseMode:       models.ParseModeMarkdown,
+		ReplyParameters: &models.ReplyParameters{MessageID: update.Message.ID},
 	})
 }

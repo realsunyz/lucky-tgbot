@@ -1,10 +1,12 @@
 package torf
 
 import (
+	"context"
 	"math/rand"
 	"strings"
 
-	tele "gopkg.in/telebot.v3"
+	"github.com/go-telegram/bot"
+	"github.com/go-telegram/bot/models"
 )
 
 func randResponse(saidType int, r *rand.Rand) string {
@@ -22,8 +24,12 @@ func randResponse(saidType int, r *rand.Rand) string {
 	return ""
 }
 
-func Execute(c tele.Context, r *rand.Rand) error {
-	inputText := c.Text()
+func Execute(ctx context.Context, b *bot.Bot, update *models.Update, r *rand.Rand) {
+	if update.Message == nil {
+		return
+	}
+
+	inputText := update.Message.Text
 	var outputText string
 
 	if strings.Contains(inputText, "有没有") {
@@ -35,8 +41,12 @@ func Execute(c tele.Context, r *rand.Rand) error {
 	} else if strings.Contains(inputText, "尊嘟假嘟") {
 		outputText = randResponse(4, r)
 	} else {
-		return nil
+		return
 	}
 
-	return c.Reply(outputText)
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:          update.Message.Chat.ID,
+		Text:            outputText,
+		ReplyParameters: &models.ReplyParameters{MessageID: update.Message.ID},
+	})
 }

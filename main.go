@@ -1,54 +1,56 @@
 package main
 
 import (
+	"context"
 	"log"
 	"math/rand"
 	"os"
+	"os/signal"
 	"strings"
 	"time"
 
-	"github.com/realSunyz/lucky-tgbot/plugin/info"
-	"github.com/realSunyz/lucky-tgbot/plugin/reborn"
+	"github.com/go-telegram/bot"
+	"github.com/go-telegram/bot/models"
 	"github.com/realSunyz/lucky-tgbot/plugin/slash"
 	"github.com/realSunyz/lucky-tgbot/plugin/torf"
-	tele "gopkg.in/telebot.v3"
 )
 
 func main() {
-	pref := tele.Settings{
-		Token:  os.Getenv("TOKEN"),
-		Poller: &tele.LongPoller{Timeout: 10 * time.Second},
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+
+	source := rand.NewSource(time.Now().UnixNano())
+	r := rand.New(source)
+
+	opts := []bot.Option{
+		bot.WithDefaultHandler(func(ctx context.Context, b *bot.Bot, update *models.Update) {
+			if update.Message == nil {
+				return
+			}
+
+			inputText := update.Message.Text
+			if inputText == "" {
+				return
+			}
+
+			// Handle slash-style custom commands (e.g., /摸, /亲)
+			if strings.HasPrefix(inputText, "/") {
+				slash.Execute(ctx, b, update)
+				return
+			}
+
+			// Handle true-or-false style responses
+			torf.Execute(ctx, b, update, r)
+		}),
 	}
 
-	b, err := tele.NewBot(pref)
+	//b, err := bot.New(os.Getenv("TOKEN"), opts...)
+	b, err := bot.New("7632804925:AAHdSuWkV-Jpxg4t1-MQu9MJyuyJN9vvqQA", opts...)
 	if err != nil {
 		log.Fatal("Error creating bot: ", err)
 		return
 	}
 
-	rebornData, err := reborn.InitRebornList("plugin/reborn/countries.json")
-	if err != nil {
-		log.Fatal("Error initializing rebornData: ", err)
-	}
-
-	source := rand.NewSource(time.Now().UnixNano())
-	r := rand.New(source)
-
-	b.Handle("/info", info.Execute)
-
-	b.Handle("/reborn", func(c tele.Context) error {
-		return reborn.Execute(c, r, rebornData)
-	})
-
-	b.Handle(tele.OnText, func(c tele.Context) error {
-		inputText := c.Text()
-
-		if strings.HasPrefix(inputText, "/") {
-			return slash.Execute(c)
-		} else {
-			return torf.Execute(c, r)
-		}
-	})
-
-	b.Start()
+	log.Println("Bot started successfully")
+	b.Start(ctx)
 }
