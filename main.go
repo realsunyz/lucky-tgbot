@@ -33,7 +33,7 @@ func main() {
 				return
 			}
 
-			// Handle slash-style custom commands (e.g., /摸, /亲)
+			// Handle slash-style custom commands
 			if strings.HasPrefix(inputText, "/") {
 				slash.Execute(ctx, b, update)
 				return

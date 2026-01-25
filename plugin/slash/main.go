@@ -68,17 +68,17 @@ func genLink(update *models.Update) (string, string) {
 	// Feature: Specify the user who is the target of the action using an At Sign (@)
 	if len(msg.Entities) != 0 {
 		if msg.Entities[0].Type == models.MessageEntityTypeTextMention {
-			// User does NOT have a public username
+			// User does not have a public username
 			replyToURI = fmt.Sprintf("tg://user?id=%d", msg.Entities[0].User.ID)
 			replyToName = genName(msg.Entities[0].User.FirstName, msg.Entities[0].User.LastName)
 		} else if msg.Entities[0].Type == models.MessageEntityTypeMention {
-			// User have a public username
+			// User has a public username
 			t := strings.Index(msg.Text, " @")
 			if t != -1 {
 				pubUserName := msg.Text[t:]
 				replyToName = strings.TrimSpace(pubUserName)
 			}
-			// User ID can NOT be obtained if only public usernames are provided
+			// User ID can not be obtained if only public usernames are provided
 			replyToURI = ""
 		}
 	}
