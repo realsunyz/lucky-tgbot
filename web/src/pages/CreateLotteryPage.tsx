@@ -240,7 +240,7 @@ export default function CreateLotteryPage() {
 
   if (isLoadingLottery) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="h-full flex items-center justify-center bg-background p-4">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
@@ -248,7 +248,7 @@ export default function CreateLotteryPage() {
 
   if (!id || !creatorId) {
     return (
-      <div className="flex-1 w-full flex items-center justify-center bg-background p-4">
+      <div className="h-full w-full flex items-center justify-center bg-background p-4">
         <Alert variant="destructive" className="w-full max-w-md">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>无效链接</AlertTitle>
@@ -262,7 +262,7 @@ export default function CreateLotteryPage() {
 
   if (isNotDraft) {
     return (
-      <div className="flex-1 w-full flex items-center justify-center bg-background p-4">
+      <div className="h-full w-full flex items-center justify-center bg-background p-4">
         <Alert className="w-full max-w-md border-yellow-500/50 text-yellow-600 dark:text-yellow-500 [&>svg]:text-yellow-600 dark:[&>svg]:text-yellow-500">
           <TriangleAlert className="h-4 w-4" />
           <AlertTitle>无法编辑</AlertTitle>

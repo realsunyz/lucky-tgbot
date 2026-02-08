@@ -35,7 +35,7 @@ export default function EditLotteryPage() {
   // Error states
   if (id && !token) {
     return (
-      <div className="flex-1 w-full flex items-center justify-center bg-background p-4">
+      <div className="h-full w-full flex items-center justify-center bg-background p-4">
         <Alert variant="destructive" className="w-full max-w-md">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>无效链接</AlertTitle>
@@ -53,7 +53,7 @@ export default function EditLotteryPage() {
 
   if (error || !lottery) {
     return (
-      <div className="flex-1 w-full flex items-center justify-center bg-background p-4">
+      <div className="h-full w-full flex items-center justify-center bg-background p-4">
         <Alert variant="destructive" className="w-full max-w-md">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>加载失败</AlertTitle>
@@ -67,7 +67,7 @@ export default function EditLotteryPage() {
 
   if (lottery.status !== "active") {
     return (
-      <div className="flex-1 w-full flex items-center justify-center bg-background p-4">
+      <div className="h-full w-full flex items-center justify-center bg-background p-4">
         <Alert className="w-full max-w-md border-yellow-500/50 text-yellow-600 dark:text-yellow-500 [&>svg]:text-yellow-600 dark:[&>svg]:text-yellow-500">
           <TriangleAlert className="h-4 w-4" />
           <AlertTitle>无法编辑</AlertTitle>

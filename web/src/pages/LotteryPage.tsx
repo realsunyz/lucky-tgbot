@@ -40,7 +40,7 @@ export default function LotteryPage() {
 
   if (loading) {
     return (
-      <div className="flex-1 w-full flex items-center justify-center bg-background">
+      <div className="h-full w-full flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="text-muted-foreground">加载中...</p>
@@ -51,7 +51,7 @@ export default function LotteryPage() {
 
   if (error || !lottery) {
     return (
-      <div className="flex-1 w-full flex items-center justify-center bg-background p-4">
+      <div className="h-full w-full flex items-center justify-center bg-background p-4">
         <Alert variant="destructive" className="w-full max-w-md">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>加载失败</AlertTitle>
@@ -63,7 +63,7 @@ export default function LotteryPage() {
 
   if (lottery.status === "draft") {
     return (
-      <div className="flex-1 w-full flex items-center justify-center bg-background p-4">
+      <div className="h-full w-full flex items-center justify-center bg-background p-4">
         <Alert className="w-full max-w-md border-yellow-500/50 text-yellow-600 dark:text-yellow-500 [&>svg]:text-yellow-600 dark:[&>svg]:text-yellow-500">
           <TriangleAlert className="h-4 w-4" />
           <AlertTitle>抽奖未发布</AlertTitle>
