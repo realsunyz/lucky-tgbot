@@ -20,3 +20,11 @@ Thumbs.db
 
 # Go
 vendor/
+
+# Test files
+lottery.db
+lottery.db-shm
+lottery.db-wal
+
+# Node
+web/node_modules
