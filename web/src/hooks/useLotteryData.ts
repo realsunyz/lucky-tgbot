@@ -5,6 +5,7 @@ import {
   type Participant,
   type LotteryResponse,
 } from "@/api/lottery";
+import { getErrorMessage } from "@/utils/errors";
 
 interface UseLotteryDataOptions {
   id: string | undefined;
@@ -40,7 +41,7 @@ export function useLotteryData({
       setLottery(lotteryData);
       setParticipants(participantsData || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "加载失败");
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }

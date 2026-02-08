@@ -31,11 +31,7 @@ func SetBot(b *bot.Bot) {
 }
 
 func getWebDomain() string {
-	domain := os.Getenv("WEB_DOMAIN")
-	if domain == "" {
-		domain = "http://localhost:3000"
-	}
-	return strings.TrimSuffix(domain, "/")
+	return strings.TrimSuffix(os.Getenv("WEB_DOMAIN"), "/")
 }
 
 func HandleLotteryCommand(ctx context.Context, b *bot.Bot, update *models.Update) {
@@ -90,10 +86,9 @@ func HandleLotteryCommand(ctx context.Context, b *bot.Bot, update *models.Update
 	createLink := fmt.Sprintf("%s/create/%s", webDomain, lotteryID)
 	log.Printf("Create link: %s", createLink)
 
-	message := fmt.Sprintf("🎉 正在创建新抽奖...\n\n"+
-		"抽奖 ID: <code>%s</code>\n\n"+
-		"请点击下方链接完成抽奖设置：\n%s",
-		lotteryID, createLink)
+	message := fmt.Sprintf("新抽奖创建成功\n\n"+
+		"请在 30 分钟内点击下方链接完成抽奖设置:\n%s",
+		createLink)
 
 	log.Printf("Sending message to chat %d...", update.Message.Chat.ID)
 
@@ -103,13 +98,6 @@ func HandleLotteryCommand(ctx context.Context, b *bot.Bot, update *models.Update
 			ChatID:    update.Message.Chat.ID,
 			Text:      message,
 			ParseMode: models.ParseModeHTML,
-			ReplyMarkup: &models.InlineKeyboardMarkup{
-				InlineKeyboard: [][]models.InlineKeyboardButton{
-					{
-						{Text: "📝 创建抽奖", URL: createLink},
-					},
-				},
-			},
 		})
 	} else {
 		_, sendErr = b.SendMessage(ctx, &bot.SendMessageParams{
@@ -177,7 +165,7 @@ func HandleEditCommand(ctx context.Context, b *bot.Bot, update *models.Update) {
 	if err := database.CreateEditToken(editToken); err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
-			Text:   "❌ 生成编辑链接失败，请稍后重试",
+			Text:   "❌ 生成编辑链接失败, 请稍后重试",
 		})
 		return
 	}
@@ -185,7 +173,7 @@ func HandleEditCommand(ctx context.Context, b *bot.Bot, update *models.Update) {
 	webDomain := getWebDomain()
 	editLink := fmt.Sprintf("%s/edit/%s?token=%s", webDomain, lotteryID, token)
 
-	message := fmt.Sprintf("✏️ 编辑抽奖\n\n"+
+	message := fmt.Sprintf("编辑抽奖\n\n"+
 		"抽奖 ID: <code>%s</code>\n"+
 		"标题: %s\n\n"+
 		"编辑链接有效期 1 小时：\n%s",
@@ -196,13 +184,6 @@ func HandleEditCommand(ctx context.Context, b *bot.Bot, update *models.Update) {
 			ChatID:    update.Message.Chat.ID,
 			Text:      message,
 			ParseMode: models.ParseModeHTML,
-			ReplyMarkup: &models.InlineKeyboardMarkup{
-				InlineKeyboard: [][]models.InlineKeyboardButton{
-					{
-						{Text: "✏️ 编辑抽奖", URL: editLink},
-					},
-				},
-			},
 		})
 	} else {
 		b.SendMessage(ctx, &bot.SendMessageParams{
@@ -214,7 +195,6 @@ func HandleEditCommand(ctx context.Context, b *bot.Bot, update *models.Update) {
 
 }
 
-// HandleStartCommand handles /start with deep linking
 func HandleStartCommand(ctx context.Context, b *bot.Bot, update *models.Update) {
 	if update.Message == nil {
 		return
@@ -227,7 +207,7 @@ func HandleStartCommand(ctx context.Context, b *bot.Bot, update *models.Update) 
 	if len(parts) < 2 {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
-			Text:   "👋 欢迎使用 Lucky Draw Bot！\n\n发送 /lottery 创建新抽奖。",
+			Text:   "Hi there!",
 		})
 		return
 	}
@@ -283,7 +263,7 @@ func handleJoin(ctx context.Context, b *bot.Bot, update *models.Update, lotteryI
 		if strings.Contains(err.Error(), "UNIQUE constraint") || strings.Contains(err.Error(), "constraint failed") {
 			b.SendMessage(ctx, &bot.SendMessageParams{
 				ChatID: update.Message.Chat.ID,
-				Text:   "⚠️ 您已经参与过该抽奖了！",
+				Text:   fmt.Sprintf("您已参与抽奖 %s, 请勿重复点击.", lotteryID),
 			})
 		} else {
 			log.Printf("Failed to add participant: %v", err)
@@ -295,12 +275,10 @@ func handleJoin(ctx context.Context, b *bot.Bot, update *models.Update, lotteryI
 		return
 	}
 
-	count, _ := database.GetParticipantCount(lotteryID)
-
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
-		Text: fmt.Sprintf("✅ <b>参与成功！</b>\n\n您已加入抽奖「%s」\n当前参与人数: %d",
-			lottery.Title, count),
+		Text: fmt.Sprintf("参加抽奖成功\n\n抽奖 ID: %s\n抽奖标题: %s\n\n更多详情请前往网页端查看:\n%s/lottery/%s",
+			lottery.ID, lottery.Title, getWebDomain(), lottery.ID),
 		ParseMode: models.ParseModeHTML,
 	})
 }
@@ -319,11 +297,10 @@ func sendLotteryCreatedMessage(ctx context.Context, lottery *dbmodels.Lottery, p
 	webDomain := getWebDomain()
 	lotteryLink := fmt.Sprintf("%s/lottery/%s", webDomain, lottery.ID)
 
-	message := fmt.Sprintf("🎉 抽奖已创建！\n\n"+
-		"抽奖 ID: <code>%s</code>\n"+
-		"标题: %s\n"+
-		"奖品:\n%s\n\n"+
-		"%s",
+	message := fmt.Sprintf("抽奖 ID: %s\n"+
+		"抽奖标题: %s\n"+
+		"奖品内容:\n%s\n\n"+
+		"更多详情请前往网页端查看:\n%s",
 		lottery.ID, lottery.Title, prizesText, lotteryLink)
 
 	// Get bot username for deep link
@@ -336,12 +313,10 @@ func sendLotteryCreatedMessage(ctx context.Context, lottery *dbmodels.Lottery, p
 
 	var joinButton models.InlineKeyboardButton
 	if botUsername != "" {
-		// Deep link to bot start
 		deepLink := fmt.Sprintf("https://t.me/%s?start=join_%s", botUsername, lottery.ID)
 		joinButton = models.InlineKeyboardButton{Text: ">>> 点击参与 <<<", URL: deepLink}
 	} else if strings.HasPrefix(webDomain, "https://") {
-		// Fallback to web link only if it's HTTPS (Telegram requires valid URL)
-		joinButton = models.InlineKeyboardButton{Text: ">>> 点击参与 (Web) <<<", URL: lotteryLink}
+		joinButton = models.InlineKeyboardButton{Text: ">>> 点击参与 <<<", URL: lotteryLink}
 	}
 
 	params := &bot.SendMessageParams{
@@ -379,28 +354,42 @@ func sendWinnerNotification(ctx context.Context, lotteryID string, winners []dbm
 		userWins[w.UserID] = append(userWins[w.UserID], w.PrizeName)
 	}
 
+	creatorName := "发起者"
+	if chat, err := botInstance.GetChat(ctx, &bot.GetChatParams{ChatID: lottery.CreatorID}); err == nil {
+		if chat.Username != "" {
+			creatorName = "@" + chat.Username
+		} else if chat.FirstName != "" {
+			creatorName = chat.FirstName
+		}
+	}
+
 	for userID, prizes := range userWins {
 		prizeText := strings.Join(prizes, ", ")
-		message := fmt.Sprintf("🎊 恭喜！您在抽奖「%s」中中奖了！\n\n"+
-			"您获得的奖品: %s\n\n"+
-			"查看开奖结果: %s",
-			lottery.Title, prizeText, resultLink)
+		message := fmt.Sprintf("中奖通知\n\n"+
+			"恭喜您在抽奖活动 %s 中获奖! \n"+
+			"抽奖标题: %s\n"+
+			"获得奖品: %s\n\n"+
+			"请及时联系 <a href=\"tg://user?id=%d\">%s</a> 领取奖品.",
+			lottery.Title, lottery.Title, prizeText, lottery.CreatorID, creatorName)
 
 		botInstance.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: userID,
-			Text:   message,
+			ChatID:    userID,
+			Text:      message,
+			ParseMode: models.ParseModeHTML,
 		})
 	}
 
 	var winnerLines []string
 	for _, w := range winners {
-		winnerLines = append(winnerLines, fmt.Sprintf("- @%s: %s", w.Username, w.PrizeName))
+		winnerLines = append(winnerLines, fmt.Sprintf("- %d 获得了 \"%s\"", w.UserID, w.PrizeName))
 	}
 
-	creatorMessage := fmt.Sprintf("🎊 抽奖「%s」已开奖！\n\n"+
-		"中奖名单:\n%s\n\n"+
-		"查看完整结果: %s",
-		lottery.Title, strings.Join(winnerLines, "\n"), resultLink)
+	creatorMessage := fmt.Sprintf("开奖已完成\n\n"+
+		"抽奖 ID: %s\n"+
+		"抽奖标题: %s\n"+
+		"中奖用户列表:\n%s\n\n"+
+		"更多详情请前往网页端查看:\n%s",
+		lottery.ID, lottery.Title, strings.Join(winnerLines, "\n"), resultLink)
 
 	botInstance.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: lottery.CreatorID,

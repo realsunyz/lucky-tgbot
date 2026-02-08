@@ -35,9 +35,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Drawer } from "vaul";
-import { Trash2, Settings2 } from "lucide-react";
+import { Trash2, Settings2, Search, Plus, RotateCcw } from "lucide-react";
 import type { Participant, Prize } from "@/api/lottery";
-import { updateParticipantWeight, updatePrizeWeight } from "@/api/lottery";
+import {
+  updateParticipantWeight,
+  updatePrizeWeight,
+  deletePrizeWeight,
+} from "@/api/lottery";
+import { getErrorMessage } from "@/utils/errors";
 
 interface ParticipantsTableProps {
   participants: Participant[];
@@ -83,9 +88,7 @@ export function ParticipantsTable({
       <Card className="gap-4">
         <CardHeader>
           <CardTitle>参与者列表</CardTitle>
-          <CardDescription>
-            查看所有参与用户并修改权重。点击用户 ID 可设置特定奖品的权重。
-          </CardDescription>
+          <CardDescription>查看所有参与用户并修改权重。</CardDescription>
         </CardHeader>
         <CardContent>
           {participants.length === 0 ? (
@@ -227,29 +230,13 @@ export function ParticipantsTable({
                 设置特定奖品的权重。默认权重为全局权重。
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-2">
-              <GlobalWeightRow
-                participant={weightEditingParticipant}
-                lotteryId={lotteryId}
-                token={token}
-                onUpdate={onDataUpdate}
-              />
-              <hr />
-              {prizes.length === 0 ? (
-                <p className="text-center text-muted-foreground">暂无奖品</p>
-              ) : (
-                prizes.map((prize) => (
-                  <PrizeWeightRow
-                    key={prize.id}
-                    prize={prize}
-                    participant={weightEditingParticipant}
-                    lotteryId={lotteryId}
-                    token={token}
-                    onUpdate={onDataUpdate}
-                  />
-                ))
-              )}
-            </div>
+            <PrizeWeightEditor
+              participant={weightEditingParticipant}
+              prizes={prizes}
+              lotteryId={lotteryId}
+              token={token}
+              onUpdate={onDataUpdate}
+            />
           </DialogContent>
         </Dialog>
       ) : (
@@ -274,37 +261,137 @@ export function ParticipantsTable({
                   </span>{" "}
                   设置特定奖品的权重。默认权重为全局权重。
                 </Drawer.Description>
-                <div className="space-y-4 pb-8">
-                  <GlobalWeightRow
-                    participant={weightEditingParticipant}
-                    lotteryId={lotteryId}
-                    token={token}
-                    onUpdate={onDataUpdate}
-                  />
-                  <hr />
-                  {prizes.length === 0 ? (
-                    <p className="text-center text-muted-foreground">
-                      暂无奖品
-                    </p>
-                  ) : (
-                    prizes.map((prize) => (
-                      <PrizeWeightRow
-                        key={prize.id}
-                        prize={prize}
-                        participant={weightEditingParticipant}
-                        lotteryId={lotteryId}
-                        token={token}
-                        onUpdate={onDataUpdate}
-                      />
-                    ))
-                  )}
-                </div>
+                <PrizeWeightEditor
+                  participant={weightEditingParticipant}
+                  prizes={prizes}
+                  lotteryId={lotteryId}
+                  token={token}
+                  onUpdate={onDataUpdate}
+                />
               </div>
             </Drawer.Content>
           </Drawer.Portal>
         </Drawer.Root>
       )}
     </>
+  );
+}
+
+function PrizeWeightEditor({
+  participant,
+  prizes,
+  lotteryId,
+  token,
+  onUpdate,
+}: {
+  participant: Participant | null;
+  prizes: Prize[];
+  lotteryId: string;
+  token: string;
+  onUpdate: () => Promise<void>;
+}) {
+  const [activePrizeIds, setActivePrizeIds] = useState<number[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Initialize active prizes based on existing weights
+  useEffect(() => {
+    if (participant && participant.prize_weights) {
+      // Only show prizes with weights different from global (or just explicit ones? user said "different")
+      const ids = Object.entries(participant.prize_weights)
+        .filter(([, w]) => w !== participant.weight)
+        .map(([id]) => Number(id));
+      setActivePrizeIds(ids);
+    } else {
+      setActivePrizeIds([]);
+    }
+  }, [participant]);
+
+  // Filter available prizes for search
+  const availablePrizes = useMemo(() => {
+    if (!searchTerm) return [];
+    const lowerTerm = searchTerm.toLowerCase();
+    return prizes.filter(
+      (p) =>
+        !activePrizeIds.includes(p.id!) &&
+        p.name.toLowerCase().includes(lowerTerm),
+    );
+  }, [prizes, activePrizeIds, searchTerm]);
+
+  const handleAddPrize = (prizeId: number) => {
+    setActivePrizeIds((prev) => [...prev, prizeId]);
+    setSearchTerm("");
+  };
+
+  const handleDeletePrize = (prizeId: number) => {
+    setActivePrizeIds((prev) => prev.filter((id) => id !== prizeId));
+  };
+
+  const activePrizesList = useMemo(() => {
+    return prizes.filter((p) => activePrizeIds.includes(p.id!));
+  }, [prizes, activePrizeIds]);
+
+  return (
+    <div className="space-y-4">
+      <GlobalWeightRow
+        participant={participant}
+        lotteryId={lotteryId}
+        token={token}
+        onUpdate={onUpdate}
+      />
+
+      {activePrizesList.length > 0 && <hr />}
+
+      <div className="space-y-2">
+        {activePrizesList.map((prize) => (
+          <PrizeWeightRow
+            key={prize.id}
+            prize={prize}
+            participant={participant}
+            lotteryId={lotteryId}
+            token={token}
+            onUpdate={onUpdate}
+            onDelete={() => handleDeletePrize(prize.id!)}
+          />
+        ))}
+      </div>
+
+      <hr />
+
+      <div className="space-y-2">
+        <label className="text-sm text-muted-foreground block">
+          添加单独权重
+        </label>
+        <div className="relative">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="搜索奖品..."
+            className="pl-8"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        {searchTerm && (
+          <div className="border rounded-md divide-y max-h-40 overflow-y-auto">
+            {availablePrizes.length === 0 ? (
+              <div className="p-3 text-sm text-center text-muted-foreground">
+                无匹配奖品
+              </div>
+            ) : (
+              availablePrizes.map((p) => (
+                <button
+                  key={p.id}
+                  className="w-full flex items-center justify-between px-4 py-3 text-sm hover:bg-muted/50 transition-colors text-left"
+                  onClick={() => handleAddPrize(p.id!)}
+                >
+                  <span className="truncate flex-1">{p.name}</span>
+                  <Plus className="h-4 w-4 text-muted-foreground" />
+                </button>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -336,23 +423,16 @@ function PrizeWeightRow({
   lotteryId,
   token,
   onUpdate,
+  onDelete,
 }: {
   prize: Prize;
   participant: Participant | null;
   lotteryId: string;
   token: string;
   onUpdate: () => Promise<void>;
+  onDelete: () => void;
 }) {
   if (!participant) return null;
-
-  // Use prize_weights from participant if available, otherwise default to -1 (unset/global) or specific logic?
-  // Actually, we should probably fetch the specific weight or use what's in participant struct.
-  // The participant struct has `prize_weights?: Record<number, number>;`
-  // We need to make sure backend returns this. verified in models.go it has `json:"prize_weights,omitempty"`
-
-  // Let's assume if it's not in the map, it uses global.
-  // But for editing, we want to know if it's explicitly set.
-  // If we just want to EDIT the specific weight:
 
   const specificWeight = participant.prize_weights?.[prize.id!];
   const isSet = specificWeight !== undefined;
@@ -361,21 +441,12 @@ function PrizeWeightRow({
     isSet ? specificWeight.toString() : participant.weight.toString(),
   );
 
-  // If not set, we show global weight but maybe visually distinct?
-  // Let's just allow editing.
-
   const handleSave = async () => {
     const w = parseInt(weight);
     if (isNaN(w) || w < 0) {
       toast.error("权重必须大于等于 0");
       return;
     }
-
-    // If user clears the input or sets to same as global?
-    // API `updatePrizeWeight` sets a specific weight.
-    // Currently no API to "unset" a prize weight specifically (revert to global),
-    // unless we treat -1 or something as unset?
-    // For now, let's just allow setting a specific weight.
 
     try {
       await updatePrizeWeight(
@@ -388,7 +459,22 @@ function PrizeWeightRow({
       toast.success("奖品权重已更新");
       onUpdate();
     } catch (e) {
-      toast.error("更新失败");
+      toast.error(getErrorMessage(e));
+    }
+  };
+
+  const handleRevert = async () => {
+    try {
+      await deletePrizeWeight(lotteryId, participant.user_id, prize.id!, token);
+      toast.success("已恢复全局权重");
+
+      // Update local UI immediately
+      onDelete();
+
+      // Update global data
+      onUpdate();
+    } catch (e) {
+      toast.error(getErrorMessage(e));
     }
   };
 
@@ -398,6 +484,15 @@ function PrizeWeightRow({
         <div className="truncate">{prize.name}</div>
       </div>
       <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+          onClick={handleRevert}
+          title="恢复全局权重"
+        >
+          <RotateCcw className="h-4 w-4" />
+        </Button>
         <Input
           type="number"
           min={0}
@@ -449,7 +544,7 @@ function GlobalWeightRow({
       toast.success("全局权重已更新");
       onUpdate();
     } catch (e) {
-      toast.error("更新失败");
+      toast.error(getErrorMessage(e));
       setWeight(participant.weight.toString()); // Revert
     }
   };
@@ -457,7 +552,7 @@ function GlobalWeightRow({
   return (
     <div className="flex items-center justify-between gap-4 p-2 border rounded-lg bg-muted/20">
       <div className="flex-1 min-w-0 pl-1">
-        <div className="truncate font-medium">全局权重</div>
+        <div className="truncate text-sm">全局权重</div>
         <div className="text-xs text-muted-foreground">
           适用于未单独设置权重的奖品
         </div>

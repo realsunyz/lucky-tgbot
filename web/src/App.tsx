@@ -21,9 +21,9 @@ function App() {
               element={
                 <div className="flex flex-1 items-center justify-center p-4">
                   <div className="text-center">
-                    <h1 className="text-4xl font-bold mb-4">🎉 Lucky Bot</h1>
+                    <h1 className="text-4xl font-bold mb-4">Lucky Bot</h1>
                     <p className="text-muted-foreground">
-                      通过 Telegram Bot 创建和管理抽奖
+                      A private Telegram bot.
                     </p>
                   </div>
                 </div>

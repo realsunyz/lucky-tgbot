@@ -29,6 +29,7 @@ import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { updateLottery, type LotteryResponse } from "@/api/lottery";
+import { getErrorMessage } from "@/utils/errors";
 
 interface DrawActionsProps {
   lottery: LotteryResponse;
@@ -161,7 +162,7 @@ export function DrawActions({
       setOpen(false);
       await onUpdate();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "更新失败");
+      toast.error(getErrorMessage(err));
     } finally {
       setIsSaving(false);
     }

@@ -32,6 +32,7 @@ import {
   UserRoundPlus,
 } from "lucide-react";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
+import { getErrorMessage } from "@/utils/errors";
 
 interface PrizeInput {
   name: string;
@@ -90,7 +91,7 @@ export default function CreateLotteryPage() {
         })
         .catch((err) => {
           console.error(err);
-          setErrorMsg("获取抽奖信息失败");
+          setErrorMsg(getErrorMessage(err));
         })
         .finally(() => {
           setIsLoadingLottery(false);
@@ -231,7 +232,7 @@ export default function CreateLotteryPage() {
       toast.success("抽奖创建成功！");
       navigate(`/lottery/${id}`);
     } catch (error) {
-      setErrorMsg(error instanceof Error ? error.message : "创建失败");
+      setErrorMsg(getErrorMessage(error));
     } finally {
       setIsSubmitting(false);
     }

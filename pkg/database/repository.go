@@ -177,6 +177,12 @@ func SetPrizeWeight(lotteryID string, userID int64, prizeID int64, weight int) e
 	return err
 }
 
+func DeletePrizeWeight(lotteryID string, userID int64, prizeID int64) error {
+	db := GetDB()
+	_, err := db.Exec(`DELETE FROM prize_weights WHERE lottery_id = ? AND user_id = ? AND prize_id = ?`, lotteryID, userID, prizeID)
+	return err
+}
+
 func GetPrizeWeights(lotteryID string) ([]models.PrizeWeight, error) {
 	db := GetDB()
 	rows, err := db.Query(`

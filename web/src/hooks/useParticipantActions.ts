@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/errors";
 import {
   updateParticipantWeight,
   updatePrizeWeight,
@@ -62,7 +63,7 @@ export function useParticipantActions({
       toast.success("权重已更新");
       return true;
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "更新失败");
+      toast.error(getErrorMessage(err));
       return false;
     } finally {
       setIsSavingWeight(false);
@@ -77,7 +78,7 @@ export function useParticipantActions({
       onParticipantRemoved(participant.user_id);
       toast.success("已移除参与者");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "移除失败");
+      toast.error(getErrorMessage(err));
     }
   };
 
@@ -91,7 +92,7 @@ export function useParticipantActions({
       await onDataUpdate();
       return true;
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "开奖失败");
+      toast.error(getErrorMessage(err));
       return false;
     } finally {
       setIsDrawing(false);

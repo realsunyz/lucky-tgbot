@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/table";
 import { Plus, Trash2, Loader2 } from "lucide-react";
 import { updateLottery, type Prize, type LotteryResponse } from "@/api/lottery";
+import { getErrorMessage } from "@/utils/errors";
 
 interface PrizesCardProps {
   lottery: LotteryResponse;
@@ -97,7 +98,7 @@ export function PrizesCard({
       await onUpdate();
       setIsDialogOpen(false);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "保存失败");
+      toast.error(getErrorMessage(err));
     } finally {
       setIsSaving(false);
     }
@@ -134,7 +135,7 @@ export function PrizesCard({
       toast.success("奖品已更新");
       await onUpdate();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "更新失败");
+      toast.error(getErrorMessage(err));
       // Revert optimization logic if needed, but for now we rely on re-fetch
     }
   };
@@ -157,7 +158,7 @@ export function PrizesCard({
       toast.success("奖品已删除");
       await onUpdate();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "删除失败");
+      toast.error(getErrorMessage(err));
     } finally {
       setDeletingIndex(null);
     }

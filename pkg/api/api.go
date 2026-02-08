@@ -65,6 +65,7 @@ func SetupRoutes(app *fiber.App) {
 	api.Get("/lottery/:id/participants", tokenAuth, getParticipants)
 	api.Put("/lottery/:id/participants/:uid", tokenAuth, updateParticipantWeight)
 	api.Post("/lottery/:id/participants/:uid/prize_weight", tokenAuth, updatePrizeWeight)
+	api.Delete("/lottery/:id/participants/:uid/prize_weight/:prize_id", tokenAuth, deletePrizeWeight)
 	api.Delete("/lottery/:id/participants/:uid", tokenAuth, removeParticipant)
 	api.Post("/lottery/:id/draw", tokenAuth, drawLottery)
 }
@@ -73,24 +74,19 @@ func tokenAuth(c fiber.Ctx) error {
 	lotteryID := c.Params("id")
 	token := c.Query("token")
 
+	// tokenAuth
 	if token == "" {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "Token required",
-		})
+		return SendError(c, fiber.StatusUnauthorized, ERR_UNAUTHORIZED, "Token required")
 	}
 
 	valid, err := database.ValidateEditToken(lotteryID, token)
 	if err != nil {
 		log.Printf("Token validation error: %v", err)
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Token validation failed",
-		})
+		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, "Token validation failed")
 	}
 
 	if !valid {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "Invalid or expired token",
-		})
+		return SendError(c, fiber.StatusUnauthorized, ERR_TOKEN_INVALID, "Invalid or expired token")
 	}
 
 	return c.Next()
@@ -101,10 +97,10 @@ func getLottery(c fiber.Ctx) error {
 
 	lottery, err := database.GetLottery(id)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
 	}
 	if lottery == nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Lottery not found"})
+		return SendError(c, fiber.StatusNotFound, ERR_NOT_FOUND, "Lottery not found")
 	}
 
 	prizes, _ := database.GetPrizes(id)
@@ -129,22 +125,22 @@ func createLottery(c fiber.Ctx) error {
 
 	existing, err := database.GetLottery(id)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
 	}
 	if existing != nil && existing.Status != "draft" {
-		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Lottery already exists"})
+		return SendError(c, fiber.StatusConflict, ERR_CONFLICT, "Lottery already exists")
 	}
 
 	var req LotteryRequest
 	if err := c.Bind().Body(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
+		return SendError(c, fiber.StatusBadRequest, ERR_BAD_REQUEST, "Invalid request body")
 	}
 
 	var drawTime *time.Time
 	if req.DrawTime != nil && *req.DrawTime != "" {
 		t, err := time.Parse(time.RFC3339, *req.DrawTime)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid draw_time format"})
+			return SendError(c, fiber.StatusBadRequest, ERR_BAD_REQUEST, "Invalid draw_time format")
 		}
 		drawTime = &t
 	}
@@ -163,12 +159,12 @@ func createLottery(c fiber.Ctx) error {
 	if existing != nil {
 		lottery.CreatedAt = existing.CreatedAt
 		if err := database.UpdateLottery(lottery); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+			return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
 		}
 		database.DeletePrizes(id)
 	} else {
 		if err := database.CreateLottery(lottery); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+			return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
 		}
 	}
 
@@ -179,7 +175,7 @@ func createLottery(c fiber.Ctx) error {
 			Quantity:  p.Quantity,
 		}
 		if err := database.CreatePrize(prize); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+			return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
 		}
 	}
 
@@ -198,18 +194,18 @@ func updateLottery(c fiber.Ctx) error {
 
 	lottery, err := database.GetLottery(id)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
 	}
 	if lottery == nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Lottery not found"})
+		return SendError(c, fiber.StatusNotFound, ERR_NOT_FOUND, "Lottery not found")
 	}
 	if lottery.Status == "completed" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cannot modify completed lottery"})
+		return SendError(c, fiber.StatusBadRequest, ERR_LOTTERY_ENDED, "Cannot modify completed lottery")
 	}
 
 	var req LotteryRequest
 	if err := c.Bind().Body(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
+		return SendError(c, fiber.StatusBadRequest, ERR_BAD_REQUEST, "Invalid request body")
 	}
 
 	if req.Title != "" {
@@ -230,7 +226,7 @@ func updateLottery(c fiber.Ctx) error {
 	}
 
 	if err := database.UpdateLottery(lottery); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
 	}
 
 	if len(req.Prizes) > 0 {
@@ -257,25 +253,25 @@ func joinLottery(c fiber.Ctx) error {
 
 	lottery, err := database.GetLottery(id)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
 	}
 	if lottery == nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Lottery not found"})
+		return SendError(c, fiber.StatusNotFound, ERR_NOT_FOUND, "Lottery not found")
 	}
 	if lottery.Status != "active" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Lottery is not active"})
+		return SendError(c, fiber.StatusBadRequest, ERR_LOTTERY_NOT_ACTIVE, "Lottery is not active")
 	}
 
 	if lottery.MaxEntries != nil {
 		count, _ := database.GetParticipantCount(id)
 		if count >= *lottery.MaxEntries {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Lottery is full"})
+			return SendError(c, fiber.StatusBadRequest, ERR_LOTTERY_FULL, "Lottery is full")
 		}
 	}
 
 	var req JoinRequest
 	if err := c.Bind().Body(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
+		return SendError(c, fiber.StatusBadRequest, ERR_BAD_REQUEST, "Invalid request body")
 	}
 
 	participant := &models.Participant{
@@ -288,7 +284,7 @@ func joinLottery(c fiber.Ctx) error {
 	}
 
 	if err := database.AddParticipant(participant); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
 	}
 
 	if lottery.DrawMode == "full" && lottery.MaxEntries != nil {
@@ -306,7 +302,7 @@ func getParticipants(c fiber.Ctx) error {
 
 	participants, err := database.GetParticipants(id)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
 	}
 
 	return c.JSON(participants)
@@ -317,20 +313,42 @@ func updateParticipantWeight(c fiber.Ctx) error {
 	uidStr := c.Params("uid")
 	userID, err := strconv.ParseInt(uidStr, 10, 64)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid user ID"})
+		return SendError(c, fiber.StatusBadRequest, ERR_BAD_REQUEST, "Invalid user ID")
 	}
 
 	var req WeightRequest
 	if err := c.Bind().Body(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
+		return SendError(c, fiber.StatusBadRequest, ERR_BAD_REQUEST, "Invalid request body")
 	}
 
 	if req.Weight < 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Weight must be non-negative"})
+		return SendError(c, fiber.StatusBadRequest, ERR_BAD_REQUEST, "Weight must be non-negative")
 	}
 
 	if err := database.UpdateParticipantWeight(lotteryID, int64(userID), req.Weight); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
+	}
+
+	return c.JSON(fiber.Map{"success": true})
+}
+
+func deletePrizeWeight(c fiber.Ctx) error {
+	lotteryID := c.Params("id")
+	uidStr := c.Params("uid")
+	prizeIdStr := c.Params("prize_id")
+
+	userID, err := strconv.ParseInt(uidStr, 10, 64)
+	if err != nil {
+		return SendError(c, fiber.StatusBadRequest, ERR_BAD_REQUEST, "Invalid user ID")
+	}
+
+	prizeID, err := strconv.ParseInt(prizeIdStr, 10, 64)
+	if err != nil {
+		return SendError(c, fiber.StatusBadRequest, ERR_BAD_REQUEST, "Invalid prize ID")
+	}
+
+	if err := database.DeletePrizeWeight(lotteryID, userID, prizeID); err != nil {
+		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
 	}
 
 	return c.JSON(fiber.Map{"success": true})
@@ -341,20 +359,20 @@ func updatePrizeWeight(c fiber.Ctx) error {
 	uidStr := c.Params("uid")
 	userID, err := strconv.ParseInt(uidStr, 10, 64)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid user ID"})
+		return SendError(c, fiber.StatusBadRequest, ERR_BAD_REQUEST, "Invalid user ID")
 	}
 
 	var req PrizeWeightRequest
 	if err := c.Bind().Body(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
+		return SendError(c, fiber.StatusBadRequest, ERR_BAD_REQUEST, "Invalid request body")
 	}
 
 	if req.Weight < 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Weight must be non-negative"})
+		return SendError(c, fiber.StatusBadRequest, ERR_BAD_REQUEST, "Weight must be non-negative")
 	}
 
 	if err := database.SetPrizeWeight(lotteryID, int64(userID), req.PrizeID, req.Weight); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
 	}
 
 	return c.JSON(fiber.Map{"success": true})
@@ -365,11 +383,11 @@ func removeParticipant(c fiber.Ctx) error {
 	uidStr := c.Params("uid")
 	userID, err := strconv.ParseInt(uidStr, 10, 64)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid user ID"})
+		return SendError(c, fiber.StatusBadRequest, ERR_BAD_REQUEST, "Invalid user ID")
 	}
 
 	if err := database.RemoveParticipant(lotteryID, int64(userID)); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
 	}
 
 	return c.JSON(fiber.Map{"success": true})
@@ -380,19 +398,19 @@ func getResults(c fiber.Ctx) error {
 
 	lottery, err := database.GetLottery(id)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
 	}
 	if lottery == nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Lottery not found"})
+		return SendError(c, fiber.StatusNotFound, ERR_NOT_FOUND, "Lottery not found")
 	}
 
 	if lottery.Status != "completed" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Lottery not yet drawn"})
+		return SendError(c, fiber.StatusBadRequest, ERR_LOTTERY_NOT_ACTIVE, "Lottery not yet drawn")
 	}
 
 	winners, err := database.GetWinners(id)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
 	}
 
 	prizes, _ := database.GetPrizes(id)
@@ -409,18 +427,18 @@ func drawLottery(c fiber.Ctx) error {
 
 	lottery, err := database.GetLottery(id)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
 	}
 	if lottery == nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Lottery not found"})
+		return SendError(c, fiber.StatusNotFound, ERR_NOT_FOUND, "Lottery not found")
 	}
 	if lottery.Status == "completed" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Lottery already completed"})
+		return SendError(c, fiber.StatusBadRequest, ERR_LOTTERY_ENDED, "Lottery already completed")
 	}
 
 	winners, err := performDraw(id)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
 	}
 
 	return c.JSON(fiber.Map{

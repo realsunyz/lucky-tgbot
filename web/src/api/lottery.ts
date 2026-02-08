@@ -52,7 +52,7 @@ export async function updatePrizeWeight(
   );
   if (!res.ok) {
     const error = await res.json();
-    throw new Error(error.error || "Failed to update prize weight");
+    throw error;
   }
 }
 
@@ -97,7 +97,7 @@ export async function getLottery(id: string): Promise<LotteryResponse> {
   const res = await fetch(`${API_BASE}/api/lottery/${id}`);
   if (!res.ok) {
     const error = await res.json();
-    throw new Error(error.error || "Failed to fetch lottery");
+    throw error;
   }
   return res.json();
 }
@@ -114,7 +114,7 @@ export async function createLottery(
   });
   if (!res.ok) {
     const error = await res.json();
-    throw new Error(error.error || "Failed to create lottery");
+    throw error;
   }
   return res.json();
 }
@@ -132,7 +132,7 @@ export async function updateLottery(
   });
   if (!res.ok) {
     const error = await res.json();
-    throw new Error(error.error || "Failed to update lottery");
+    throw error;
   }
   return res.json();
 }
@@ -154,7 +154,7 @@ export async function joinLottery(
   });
   if (!res.ok) {
     const error = await res.json();
-    throw new Error(error.error || "Failed to join lottery");
+    throw error;
   }
   return res.json();
 }
@@ -169,7 +169,7 @@ export async function getParticipants(
   );
   if (!res.ok) {
     const error = await res.json();
-    throw new Error(error.error || "Failed to fetch participants");
+    throw error;
   }
   return res.json();
 }
@@ -191,7 +191,26 @@ export async function updateParticipantWeight(
   );
   if (!res.ok) {
     const error = await res.json();
-    throw new Error(error.error || "Failed to update weight");
+    throw error;
+  }
+}
+
+// Remove prize specific weight (requires token)
+export async function deletePrizeWeight(
+  id: string,
+  userId: number,
+  prizeId: number,
+  token: string,
+): Promise<void> {
+  const res = await fetch(
+    `${API_BASE}/api/lottery/${id}/participants/${userId}/prize_weight/${prizeId}?token=${token}`,
+    {
+      method: "DELETE",
+    },
+  );
+  if (!res.ok) {
+    const error = await res.json();
+    throw error;
   }
 }
 
@@ -209,7 +228,7 @@ export async function removeParticipant(
   );
   if (!res.ok) {
     const error = await res.json();
-    throw new Error(error.error || "Failed to remove participant");
+    throw error;
   }
 }
 
@@ -223,7 +242,7 @@ export async function drawLottery(
   });
   if (!res.ok) {
     const error = await res.json();
-    throw new Error(error.error || "Failed to draw lottery");
+    throw error;
   }
   return res.json();
 }
@@ -235,7 +254,7 @@ export async function getResults(
   const res = await fetch(`${API_BASE}/api/lottery/${id}/results`);
   if (!res.ok) {
     const error = await res.json();
-    throw new Error(error.error || "Failed to fetch results");
+    throw error;
   }
   return res.json();
 }

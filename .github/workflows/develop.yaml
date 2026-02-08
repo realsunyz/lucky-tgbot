@@ -23,6 +23,9 @@ jobs:
       attestations: write
       id-token: write
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Set up QEMU
         id: qemu
         uses: docker/setup-qemu-action@v2
@@ -51,7 +54,7 @@ jobs:
         id: image
         uses: docker/build-push-action@v6
         with:
-          context: "{{defaultContext}}"
+          context: .
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
