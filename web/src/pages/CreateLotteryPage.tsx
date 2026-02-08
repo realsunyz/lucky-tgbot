@@ -1,7 +1,5 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { format } from "date-fns";
-import { zhCN } from "date-fns/locale";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,21 +23,15 @@ import {
 } from "@/api/lottery";
 import { cn } from "@/lib/utils";
 import {
-  CalendarIcon,
   AlertCircle,
-  Trash2,
-  Plus,
   Hash,
-  UserRoundPlus,
-  TriangleAlert,
   Loader2,
+  Plus,
+  Trash2,
+  TriangleAlert,
+  UserRoundPlus,
 } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 
 interface PrizeInput {
   name: string;
@@ -59,12 +51,12 @@ export default function CreateLotteryPage() {
   const [drawMode, setDrawMode] = useState<"timed" | "full" | "manual">(
     "manual",
   );
-  const [date, setDate] = useState<Date>(() => {
+  const [date, setDate] = useState<Date | undefined>(() => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
+    d.setHours(20, 0, 0, 0);
     return d;
   });
-  const [time, setTime] = useState("00:00");
   const [maxEntries, setMaxEntries] = useState("");
   const [prizes, setPrizes] = useState<PrizeInput[]>([
     { name: "", quantity: 1 },
@@ -88,11 +80,7 @@ export default function CreateLotteryPage() {
           if (data.draw_mode) setDrawMode(data.draw_mode);
           if (data.max_entries) setMaxEntries(data.max_entries.toString());
           if (data.draw_time) {
-            const d = new Date(data.draw_time);
-            setDate(d);
-            setTime(
-              `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`,
-            );
+            setDate(new Date(data.draw_time));
           }
           if (data.prizes && data.prizes.length > 0) {
             setPrizes(
@@ -186,26 +174,18 @@ export default function CreateLotteryPage() {
 
     if (drawMode === "timed") {
       if (!date) {
-        setErrorMsg("请选择开奖日期");
-        return;
-      }
-      if (!time) {
         setErrorMsg("请选择开奖时间");
         return;
       }
-      const [hours, minutes] = time.split(":").map(Number);
-      const combinedDate = new Date(date);
-      combinedDate.setHours(hours, minutes, 0, 0);
-
       const now = new Date();
-      if (combinedDate <= now) {
+      if (date <= now) {
         setErrorMsg("开奖时间不得早于当前时间");
         return;
       }
 
       const maxDate = new Date();
       maxDate.setDate(now.getDate() + MAX_PRIZES_DURATION);
-      if (combinedDate > maxDate) {
+      if (date > maxDate) {
         setErrorMsg(
           `开奖时间不得晚于 ${MAX_PRIZES_DURATION} 天后, 请勿尝试绕过限制`,
         );
@@ -235,10 +215,7 @@ export default function CreateLotteryPage() {
 
       let drawTimeISO: string | undefined;
       if (drawMode === "timed" && date) {
-        const [hours, minutes] = time.split(":").map(Number);
-        const combinedDate = new Date(date);
-        combinedDate.setHours(hours, minutes, 0, 0);
-        drawTimeISO = combinedDate.toISOString();
+        drawTimeISO = date.toISOString();
       }
 
       await createLottery(id, {
@@ -527,64 +504,26 @@ export default function CreateLotteryPage() {
                     {drawMode === "timed" && (
                       <div className="pl-7 pt-2 space-y-3">
                         <div className="space-y-1.5">
-                          <Label className="text-xs">选择日期</Label>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button
-                                variant={"outline"}
-                                className={cn(
-                                  "w-full justify-start text-left font-normal",
-                                  !date && "text-muted-foreground",
-                                )}
-                              >
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {date ? (
-                                  format(date, "PPP", { locale: zhCN })
-                                ) : (
-                                  <span>选择日期</span>
-                                )}
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent
-                              className="w-auto p-0"
-                              align="start"
-                            >
-                              <Calendar
-                                mode="single"
-                                selected={date}
-                                onSelect={setDate}
-                                autoFocus
-                                required
-                                disabled={(date) => {
-                                  const now = new Date();
-                                  const startOfToday = new Date(
-                                    now.setHours(0, 0, 0, 0),
-                                  );
-                                  if (date < startOfToday) return true;
+                          <Label className="text-xs">选择开奖时间</Label>
+                          <DateTimePicker
+                            date={date}
+                            setDate={setDate}
+                            disabled={(d) => {
+                              const now = new Date();
+                              const startOfToday = new Date(
+                                now.setHours(0, 0, 0, 0),
+                              );
+                              if (d < startOfToday) return true;
 
-                                  const maxDate = new Date();
-                                  maxDate.setDate(
-                                    new Date().getDate() + MAX_PRIZES_DURATION,
-                                  );
-                                  const endOfMaxDate = new Date(
-                                    maxDate.setHours(23, 59, 59, 999),
-                                  );
-                                  return date > endOfMaxDate;
-                                }}
-                              />
-                            </PopoverContent>
-                          </Popover>
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label htmlFor="time" className="text-xs">
-                            选择时间
-                          </Label>
-                          <Input
-                            id="time"
-                            type="time"
-                            value={time}
-                            onChange={(e) => setTime(e.target.value)}
-                            className="block"
+                              const maxDate = new Date();
+                              maxDate.setDate(
+                                new Date().getDate() + MAX_PRIZES_DURATION,
+                              );
+                              const endOfMaxDate = new Date(
+                                maxDate.setHours(23, 59, 59, 999),
+                              );
+                              return d > endOfMaxDate;
+                            }}
                           />
                         </div>
                       </div>

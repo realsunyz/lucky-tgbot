@@ -5,7 +5,13 @@ import { Drawer } from "vaul";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -17,13 +23,8 @@ import {
 } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, Loader2, Settings2 } from "lucide-react";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
+import { Loader2, Settings2 } from "lucide-react";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -63,20 +64,14 @@ export function DrawActions({
 
   // Draw mode edit state
   const [drawMode, setDrawMode] = useState(lottery.draw_mode);
-  const [date, setDate] = useState<Date>(() => {
+  const [date, setDate] = useState<Date | undefined>(() => {
     if (lottery.draw_time) {
       return new Date(lottery.draw_time);
     }
     const d = new Date();
     d.setDate(d.getDate() + 1);
+    d.setHours(20, 0, 0, 0); // Default to 8 PM next day
     return d;
-  });
-  const [time, setTime] = useState(() => {
-    if (lottery.draw_time) {
-      const d = new Date(lottery.draw_time);
-      return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
-    }
-    return "00:00";
   });
   const [maxEntries, setMaxEntries] = useState(
     lottery.max_entries?.toString() || "",
@@ -98,10 +93,11 @@ export function DrawActions({
       setDrawMode(lottery.draw_mode);
       if (lottery.draw_time) {
         setDate(new Date(lottery.draw_time));
-        const d = new Date(lottery.draw_time);
-        setTime(
-          `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`,
-        );
+      } else {
+        const d = new Date();
+        d.setDate(d.getDate() + 1);
+        d.setHours(20, 0, 0, 0);
+        setDate(d);
       }
       setMaxEntries(lottery.max_entries?.toString() || "");
     }
@@ -127,10 +123,11 @@ export function DrawActions({
   const handleSaveSettings = async () => {
     // Validate
     if (drawMode === "timed") {
-      const [hours, minutes] = time.split(":").map(Number);
-      const combinedDate = new Date(date);
-      combinedDate.setHours(hours, minutes, 0, 0);
-      if (combinedDate <= new Date()) {
+      if (!date) {
+        toast.error("请选择开奖时间");
+        return;
+      }
+      if (date <= new Date()) {
         toast.error("开奖时间不得早于当前时间");
         return;
       }
@@ -150,11 +147,8 @@ export function DrawActions({
     setIsSaving(true);
     try {
       let drawTimeISO: string | undefined;
-      if (drawMode === "timed") {
-        const [hours, minutes] = time.split(":").map(Number);
-        const combinedDate = new Date(date);
-        combinedDate.setHours(hours, minutes, 0, 0);
-        drawTimeISO = combinedDate.toISOString();
+      if (drawMode === "timed" && date) {
+        drawTimeISO = date.toISOString();
       }
 
       await updateLottery(lotteryId, token, {
@@ -221,57 +215,22 @@ export function DrawActions({
         {drawMode === "timed" && (
           <div className="pl-7 pt-2 space-y-3">
             <div className="space-y-1.5">
-              <Label className="text-xs">选择日期</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !date && "text-muted-foreground",
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date ? (
-                      format(date, "PPP", { locale: zhCN })
-                    ) : (
-                      <span>选择日期</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={(d) => d && setDate(d)}
-                    autoFocus
-                    disabled={(d) => {
-                      const now = new Date();
-                      const startOfToday = new Date(now.setHours(0, 0, 0, 0));
-                      if (d < startOfToday) return true;
-                      const maxDate = new Date();
-                      maxDate.setDate(
-                        new Date().getDate() + MAX_PRIZES_DURATION,
-                      );
-                      const endOfMaxDate = new Date(
-                        maxDate.setHours(23, 59, 59, 999),
-                      );
-                      return d > endOfMaxDate;
-                    }}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-time" className="text-xs">
-                选择时间
-              </Label>
-              <Input
-                id="edit-time"
-                type="time"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                className="block"
+              <Label className="text-xs">选择开奖时间</Label>
+              <DateTimePicker
+                date={date}
+                setDate={setDate}
+                disabled={(d) => {
+                  const now = new Date();
+                  const startOfToday = new Date(now.setHours(0, 0, 0, 0));
+                  if (d < startOfToday) return true;
+
+                  const maxDate = new Date();
+                  maxDate.setDate(new Date().getDate() + MAX_PRIZES_DURATION);
+                  const endOfMaxDate = new Date(
+                    maxDate.setHours(23, 59, 59, 999),
+                  );
+                  return d > endOfMaxDate;
+                }}
               />
             </div>
           </div>
@@ -335,9 +294,10 @@ export function DrawActions({
   );
 
   return (
-    <Card>
+    <Card className="gap-4">
       <CardHeader>
         <CardTitle>管理操作</CardTitle>
+        <CardDescription>修改开奖方式</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Current Draw Mode Display */}

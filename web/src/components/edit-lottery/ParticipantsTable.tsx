@@ -83,7 +83,7 @@ export function ParticipantsTable({
                       <TableHead className="whitespace-nowrap">
                         加入时间
                       </TableHead>
-                      <TableHead className="text-center whitespace-nowrap">
+                      <TableHead className="w-[140px] text-center whitespace-nowrap">
                         全局权重
                       </TableHead>
                       <TableHead className="text-right whitespace-nowrap pr-4">
@@ -241,8 +241,8 @@ function InlineWeightEdit({
 
   const handleSave = async () => {
     const w = parseInt(weight);
-    if (isNaN(w) || w < 0) {
-      toast.error("权重必须大于等于 0");
+    if (isNaN(w) || w < 0 || w > 100) {
+      toast.error("权重必须在 0-100 之间");
       setWeight(participant.weight.toString());
       setIsEditing(false);
       return;
@@ -282,7 +282,8 @@ function InlineWeightEdit({
         ref={inputRef}
         type="number"
         min={0}
-        className="h-7 w-16 text-center text-base font-mono"
+        max={100}
+        className="h-7 w-20 text-center text-base font-mono"
         value={weight}
         onChange={(e) => setWeight(e.target.value)}
         onBlur={handleSave}
@@ -295,7 +296,7 @@ function InlineWeightEdit({
   return (
     <button
       onClick={() => setIsEditing(true)}
-      className="h-7 px-2 text-xs font-mono rounded-md border border-border bg-transparent hover:bg-accent transition-colors cursor-text"
+      className="h-7 px-2 min-w-16 text-sm font-mono rounded-md border border-border bg-transparent hover:bg-accent transition-colors cursor-text"
     >
       ×{participant.weight}
     </button>

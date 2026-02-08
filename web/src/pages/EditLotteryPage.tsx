@@ -8,6 +8,7 @@ import { useParticipantActions } from "@/hooks/useParticipantActions";
 import {
   DrawActions,
   ParticipantsTable,
+  PrizesCard,
   EditLotterySkeleton,
 } from "@/components/edit-lottery";
 
@@ -129,7 +130,13 @@ export default function EditLotteryPage() {
           </div>
 
           {/* Right Column: Participants */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 space-y-6">
+            <PrizesCard
+              lottery={lottery}
+              lotteryId={id!}
+              token={token!}
+              onUpdate={loadData}
+            />
             <ParticipantsTable
               participants={participants}
               lotteryId={id!}
