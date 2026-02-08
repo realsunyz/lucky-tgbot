@@ -139,6 +139,7 @@ export default function EditLotteryPage() {
             />
             <ParticipantsTable
               participants={participants}
+              prizes={lottery.prizes || []}
               lotteryId={id!}
               token={token!}
               onDelete={handleRemoveParticipant}
