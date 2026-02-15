@@ -9,7 +9,7 @@ import Layout from "@/components/layout";
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
       <BrowserRouter>
         <Routes>
           <Route element={<Layout />}>

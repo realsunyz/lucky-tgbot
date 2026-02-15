@@ -25,3 +25,7 @@ func SendError(c fiber.Ctx, status int, code string, message string) error {
 		Message: message,
 	})
 }
+
+func SendInternalError(c fiber.Ctx) error {
+	return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, "Internal server error")
+}

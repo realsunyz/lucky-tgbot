@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"math/rand"
 	"os"
 	"os/signal"
@@ -13,6 +12,7 @@ import (
 	"github.com/go-telegram/bot/models"
 	"github.com/realSunyz/lucky-tgbot/pkg/api"
 	"github.com/realSunyz/lucky-tgbot/pkg/database"
+	"github.com/realSunyz/lucky-tgbot/pkg/logger"
 	"github.com/realSunyz/lucky-tgbot/pkg/service"
 	"github.com/realSunyz/lucky-tgbot/pkg/worker"
 	"github.com/realSunyz/lucky-tgbot/plugin/lottery"
@@ -40,7 +40,7 @@ func main() {
 
 			// Handle create commands first
 			if strings.HasPrefix(inputText, "/create") {
-				log.Printf("Matched /create command: %s", inputText)
+				logger.Infof("matched /create command: %s", inputText)
 				lottery.HandleLotteryCommand(ctx, b, update)
 				return
 			}
@@ -66,8 +66,7 @@ func main() {
 
 	b, err := bot.New(os.Getenv("TELEGRAM_BOT_TOKEN"), opts...)
 	if err != nil {
-		log.Fatal("Error creating bot: ", err)
-		return
+		logger.Fatalf("error creating bot: %v", err)
 	}
 
 	lotteryService := service.NewLotteryService(database.GetDB(), lottery.NewTelegramNotifier(b))
@@ -82,6 +81,6 @@ func main() {
 	// Start cleanup worker
 	worker.StartCleanupWorker()
 
-	log.Println("Bot started successfully")
+	logger.Infof("bot started successfully")
 	b.Start(ctx)
 }

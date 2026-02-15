@@ -2,13 +2,13 @@ package api
 
 import (
 	"errors"
-	"log"
 	"os"
 	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/static"
+	"github.com/realSunyz/lucky-tgbot/pkg/logger"
 	"github.com/realSunyz/lucky-tgbot/pkg/models"
 	"github.com/realSunyz/lucky-tgbot/pkg/service"
 )
@@ -88,7 +88,7 @@ func (h *Handler) tokenAuth(c fiber.Ctx) error {
 		if errors.Is(err, service.ErrTokenInvalid) {
 			return SendError(c, fiber.StatusUnauthorized, ERR_TOKEN_INVALID, "Invalid or expired token")
 		}
-		log.Printf("Token validation error: %v", err)
+		logger.Errorf("token validation error: %v", err)
 		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, "Token validation failed")
 	}
 
@@ -103,7 +103,8 @@ func (h *Handler) getLottery(c fiber.Ctx) error {
 		if errors.Is(err, service.ErrLotteryNotFound) {
 			return SendError(c, fiber.StatusNotFound, ERR_NOT_FOUND, "Lottery not found")
 		}
-		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
+		logger.Errorf("failed to get lottery snapshot %s: %v", id, err)
+		return SendInternalError(c)
 	}
 
 	return c.JSON(LotteryResponse{
@@ -149,7 +150,8 @@ func (h *Handler) createLottery(c fiber.Ctx) error {
 		if errors.Is(err, service.ErrLotteryConflict) {
 			return SendError(c, fiber.StatusConflict, ERR_CONFLICT, "Lottery already exists")
 		}
-		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
+		logger.Errorf("failed to create lottery %s: %v", id, err)
+		return SendInternalError(c)
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(LotteryResponse{Lottery: lottery, Prizes: createdPrizes})
@@ -193,7 +195,8 @@ func (h *Handler) updateLottery(c fiber.Ctx) error {
 		case errors.Is(err, service.ErrLotteryEnded):
 			return SendError(c, fiber.StatusBadRequest, ERR_LOTTERY_ENDED, "Cannot modify completed lottery")
 		default:
-			return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
+			logger.Errorf("failed to update lottery %s: %v", id, err)
+			return SendInternalError(c)
 		}
 	}
 
@@ -225,7 +228,8 @@ func (h *Handler) joinLottery(c fiber.Ctx) error {
 		case errors.Is(err, service.ErrParticipantExists):
 			return SendError(c, fiber.StatusConflict, ERR_CONFLICT, "User already joined")
 		default:
-			return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
+			logger.Errorf("failed to join lottery %s: %v", id, err)
+			return SendInternalError(c)
 		}
 	}
 
@@ -237,7 +241,8 @@ func (h *Handler) getParticipants(c fiber.Ctx) error {
 
 	participants, err := h.service.GetParticipants(id)
 	if err != nil {
-		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
+		logger.Errorf("failed to get participants for lottery %s: %v", id, err)
+		return SendInternalError(c)
 	}
 
 	return c.JSON(participants)
@@ -260,7 +265,8 @@ func (h *Handler) updateParticipantWeight(c fiber.Ctx) error {
 	}
 
 	if err := h.service.UpdateParticipantWeight(lotteryID, userID, req.Weight); err != nil {
-		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
+		logger.Errorf("failed to update participant weight lottery=%s user=%d: %v", lotteryID, userID, err)
+		return SendInternalError(c)
 	}
 
 	return c.JSON(fiber.Map{"success": true})
@@ -281,7 +287,8 @@ func (h *Handler) deletePrizeWeight(c fiber.Ctx) error {
 	}
 
 	if err := h.service.DeletePrizeWeight(lotteryID, userID, prizeID); err != nil {
-		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
+		logger.Errorf("failed to delete prize weight lottery=%s user=%d prize=%d: %v", lotteryID, userID, prizeID, err)
+		return SendInternalError(c)
 	}
 
 	return c.JSON(fiber.Map{"success": true})
@@ -304,7 +311,8 @@ func (h *Handler) updatePrizeWeight(c fiber.Ctx) error {
 	}
 
 	if err := h.service.SetPrizeWeight(lotteryID, userID, req.PrizeID, req.Weight); err != nil {
-		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
+		logger.Errorf("failed to set prize weight lottery=%s user=%d prize=%d: %v", lotteryID, userID, req.PrizeID, err)
+		return SendInternalError(c)
 	}
 
 	return c.JSON(fiber.Map{"success": true})
@@ -319,7 +327,8 @@ func (h *Handler) removeParticipant(c fiber.Ctx) error {
 	}
 
 	if err := h.service.RemoveParticipant(lotteryID, userID); err != nil {
-		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
+		logger.Errorf("failed to remove participant lottery=%s user=%d: %v", lotteryID, userID, err)
+		return SendInternalError(c)
 	}
 
 	return c.JSON(fiber.Map{"success": true})
@@ -336,7 +345,8 @@ func (h *Handler) getResults(c fiber.Ctx) error {
 		case errors.Is(err, service.ErrLotteryNotDrawn):
 			return SendError(c, fiber.StatusBadRequest, ERR_LOTTERY_NOT_ACTIVE, "Lottery not yet drawn")
 		default:
-			return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
+			logger.Errorf("failed to get results for lottery %s: %v", id, err)
+			return SendInternalError(c)
 		}
 	}
 
@@ -356,7 +366,8 @@ func (h *Handler) drawLottery(c fiber.Ctx) error {
 		case errors.Is(err, service.ErrLotteryNotActive):
 			return SendError(c, fiber.StatusBadRequest, ERR_LOTTERY_NOT_ACTIVE, "Lottery is not active")
 		default:
-			return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
+			logger.Errorf("failed to draw lottery %s: %v", id, err)
+			return SendInternalError(c)
 		}
 	}
 
@@ -376,8 +387,8 @@ func StartServer(svc *service.LotteryService) {
 		port = "3000"
 	}
 
-	log.Printf("Starting HTTP server on port %s", port)
+	logger.Infof("starting HTTP server on port %s", port)
 	if err := app.Listen(":" + port); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+		logger.Fatalf("failed to start server: %v", err)
 	}
 }

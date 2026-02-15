@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/go-telegram/bot"
 	tgmodels "github.com/go-telegram/bot/models"
+	"github.com/realSunyz/lucky-tgbot/pkg/logger"
 	dbmodels "github.com/realSunyz/lucky-tgbot/pkg/models"
 	"github.com/realSunyz/lucky-tgbot/pkg/service"
 )
@@ -43,7 +43,7 @@ func getWebDomain() string {
 
 func HandleLotteryCommand(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	if lotteryService == nil {
-		log.Printf("lottery service is not initialized")
+		logger.Errorf("lottery service is not initialized")
 		return
 	}
 
@@ -61,7 +61,7 @@ func HandleLotteryCommand(ctx context.Context, b *bot.Bot, update *tgmodels.Upda
 
 	lottery, err := lotteryService.CreateDraftLottery(update.Message.From.ID)
 	if err != nil {
-		log.Printf("failed to create draft lottery: %v", err)
+		logger.Errorf("failed to create draft lottery: %v", err)
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
 			Text:   "❌ 创建抽奖失败，请稍后重试",
@@ -78,13 +78,13 @@ func HandleLotteryCommand(ctx context.Context, b *bot.Bot, update *tgmodels.Upda
 		ParseMode: tgmodels.ParseModeHTML,
 	})
 	if sendErr != nil {
-		log.Printf("failed to send create message: %v", sendErr)
+		logger.Errorf("failed to send create message: %v", sendErr)
 	}
 }
 
 func HandleEditCommand(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	if lotteryService == nil {
-		log.Printf("lottery service is not initialized")
+		logger.Errorf("lottery service is not initialized")
 		return
 	}
 
@@ -193,7 +193,7 @@ func handleJoin(ctx context.Context, b *bot.Bot, update *tgmodels.Update, lotter
 				ParseMode: tgmodels.ParseModeHTML,
 			})
 		default:
-			log.Printf("failed to join lottery %s: %v", lotteryID, err)
+			logger.Errorf("failed to join lottery %s: %v", lotteryID, err)
 			b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: "❌ 参与失败，请稍后重试"})
 		}
 		return

@@ -1,10 +1,10 @@
 package worker
 
 import (
-	"log"
 	"time"
 
 	"github.com/realSunyz/lucky-tgbot/pkg/database"
+	"github.com/realSunyz/lucky-tgbot/pkg/logger"
 )
 
 func StartCleanupWorker() {
@@ -14,13 +14,13 @@ func StartCleanupWorker() {
 
 		for range ticker.C {
 			if err := cleanupDrafts(); err != nil {
-				log.Printf("Error cleaning up drafts: %v", err)
+				logger.Errorf("error cleaning up drafts: %v", err)
 			}
 			if err := cleanupExpiredTokens(); err != nil {
-				log.Printf("Error cleaning up expired tokens: %v", err)
+				logger.Errorf("error cleaning up expired tokens: %v", err)
 			}
 			if err := checkpointWAL(); err != nil {
-				log.Printf("Error checkpointing WAL: %v", err)
+				logger.Errorf("error checkpointing WAL: %v", err)
 			}
 		}
 	}()
@@ -36,7 +36,7 @@ func cleanupDrafts() error {
 	}
 	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected > 0 {
-		log.Printf("Cleaned up %d stale draft lotteries", rowsAffected)
+		logger.Infof("cleaned up %d stale draft lotteries", rowsAffected)
 	}
 	return nil
 }
@@ -50,7 +50,7 @@ func cleanupExpiredTokens() error {
 	}
 	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected > 0 {
-		log.Printf("Cleaned up %d expired edit tokens", rowsAffected)
+		logger.Infof("cleaned up %d expired edit tokens", rowsAffected)
 	}
 	return nil
 }

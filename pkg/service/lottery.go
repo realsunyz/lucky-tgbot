@@ -5,12 +5,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"math/rand"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/realSunyz/lucky-tgbot/pkg/database"
+	"github.com/realSunyz/lucky-tgbot/pkg/logger"
 	"github.com/realSunyz/lucky-tgbot/pkg/models"
 )
 
@@ -328,11 +328,7 @@ func (s *LotteryService) JoinLottery(lotteryID string, input JoinInput) (*models
 	if lottery.DrawMode == "full" && lottery.MaxEntries != nil {
 		count, err := database.GetParticipantCount(lotteryID)
 		if err == nil && count >= *lottery.MaxEntries {
-			go func() {
-				if _, drawErr := s.DrawLottery(lotteryID); drawErr != nil {
-					log.Printf("full-mode auto draw failed for %s: %v", lotteryID, drawErr)
-				}
-			}()
+			go s.drawWithRetry(lotteryID, "full")
 		}
 	}
 
@@ -465,11 +461,20 @@ func (s *LotteryService) DrawLottery(lotteryID string) ([]models.Winner, error) 
 	return winners, nil
 }
 
-func (s *LotteryService) CheckTimedLotteries() error {
-	now := time.Now()
+func (s *LotteryService) CheckAutoDrawLotteries() error {
+	now := time.Now().UTC()
 	rows, err := s.db.Query(`
-		SELECT id FROM lotteries
-		WHERE status = 'active' AND draw_mode = 'timed' AND draw_time <= ?
+		SELECT l.id
+		FROM lotteries l
+		WHERE l.status = 'active' AND (
+			(l.draw_mode = 'timed' AND l.draw_time IS NOT NULL AND l.draw_time <= ?)
+			OR
+			(
+				l.draw_mode = 'full'
+				AND l.max_entries IS NOT NULL
+				AND (SELECT COUNT(*) FROM participants p WHERE p.lottery_id = l.id) >= l.max_entries
+			)
+		)
 	`, now)
 	if err != nil {
 		return err
@@ -486,14 +491,33 @@ func (s *LotteryService) CheckTimedLotteries() error {
 	}
 
 	for _, id := range ids {
-		if _, drawErr := s.DrawLottery(id); drawErr != nil &&
-			!errors.Is(drawErr, ErrLotteryEnded) &&
-			!errors.Is(drawErr, ErrLotteryNotActive) {
-			log.Printf("timed draw failed for %s: %v", id, drawErr)
-		}
+		s.drawWithRetry(id, "scheduler")
 	}
 
 	return nil
+}
+
+func (s *LotteryService) drawWithRetry(lotteryID string, source string) {
+	const maxAttempts = 3
+	backoff := 200 * time.Millisecond
+
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		_, err := s.DrawLottery(lotteryID)
+		if err == nil ||
+			errors.Is(err, ErrLotteryEnded) ||
+			errors.Is(err, ErrLotteryNotActive) ||
+			errors.Is(err, ErrLotteryNotFound) {
+			return
+		}
+
+		if attempt == maxAttempts {
+			logger.Errorf("%s auto draw failed for %s after %d attempts: %v", source, lotteryID, maxAttempts, err)
+			return
+		}
+
+		time.Sleep(backoff)
+		backoff *= 2
+	}
 }
 
 func drawWinners(lotteryID string, prizes []models.Prize, participants []models.Participant) []models.Winner {

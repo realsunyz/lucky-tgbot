@@ -3,11 +3,11 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"sync"
 
+	"github.com/realSunyz/lucky-tgbot/pkg/logger"
 	_ "modernc.org/sqlite"
 )
 
@@ -27,14 +27,14 @@ func GetDB() *sql.DB {
 		dir := filepath.Dir(dbPath)
 		if dir != "" && dir != "." {
 			if err := os.MkdirAll(dir, 0755); err != nil {
-				log.Fatalf("Failed to create database directory: %v", err)
+				logger.Fatalf("failed to create database directory: %v", err)
 			}
 		}
 
 		var err error
 		db, err = sql.Open("sqlite", dbPath)
 		if err != nil {
-			log.Fatalf("Failed to open database: %v", err)
+			logger.Fatalf("failed to open database: %v", err)
 		}
 
 		// SQLite performs best with a single shared connection in this app.
@@ -43,24 +43,24 @@ func GetDB() *sql.DB {
 
 		// Enable WAL mode for better concurrent performance
 		if _, err := db.Exec("PRAGMA journal_mode=WAL"); err != nil {
-			log.Printf("Warning: Failed to enable WAL mode: %v", err)
+			logger.Warnf("failed to enable WAL mode: %v", err)
 		}
 		if _, err := db.Exec("PRAGMA foreign_keys=ON"); err != nil {
-			log.Printf("Warning: Failed to enable foreign key constraints: %v", err)
+			logger.Warnf("failed to enable foreign key constraints: %v", err)
 		}
 		if _, err := db.Exec("PRAGMA busy_timeout=5000"); err != nil {
-			log.Printf("Warning: Failed to set busy timeout: %v", err)
+			logger.Warnf("failed to set busy timeout: %v", err)
 		}
 		if _, err := db.Exec("PRAGMA synchronous=NORMAL"); err != nil {
-			log.Printf("Warning: Failed to set synchronous mode: %v", err)
+			logger.Warnf("failed to set synchronous mode: %v", err)
 		}
 
 		// Initialize schema
 		if err := initSchema(); err != nil {
-			log.Fatalf("Failed to initialize database schema: %v", err)
+			logger.Fatalf("failed to initialize database schema: %v", err)
 		}
 
-		log.Println("Database initialized successfully")
+		logger.Infof("database initialized successfully")
 	})
 	return db
 }
