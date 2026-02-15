@@ -2,11 +2,14 @@ package database
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/realSunyz/lucky-tgbot/pkg/models"
 )
+
+var ErrParticipantExists = errors.New("participant already exists")
 
 func CreateLottery(lottery *models.Lottery) error {
 	db := GetDB()
@@ -45,20 +48,6 @@ func UpdateLottery(lottery *models.Lottery) error {
 	return err
 }
 
-func CreatePrize(prize *models.Prize) error {
-	db := GetDB()
-	result, err := db.Exec(`
-		INSERT INTO prizes (lottery_id, name, quantity)
-		VALUES (?, ?, ?)
-	`, prize.LotteryID, prize.Name, prize.Quantity)
-	if err != nil {
-		return err
-	}
-	id, _ := result.LastInsertId()
-	prize.ID = id
-	return nil
-}
-
 func GetPrizes(lotteryID string) ([]models.Prize, error) {
 	db := GetDB()
 	rows, err := db.Query(`
@@ -80,12 +69,6 @@ func GetPrizes(lotteryID string) ([]models.Prize, error) {
 	return prizes, nil
 }
 
-func DeletePrizes(lotteryID string) error {
-	db := GetDB()
-	_, err := db.Exec(`DELETE FROM prizes WHERE lottery_id = ?`, lotteryID)
-	return err
-}
-
 func AddParticipant(p *models.Participant) error {
 	db := GetDB()
 	now := time.Now().UTC()
@@ -101,6 +84,10 @@ func AddParticipant(p *models.Participant) error {
 	`, p.LotteryID, p.UserID, p.Username, p.FirstName, p.LastName, p.Weight, p.JoinedAt)
 	if err != nil {
 		return err
+	}
+	rows, err := result.RowsAffected()
+	if err == nil && rows == 0 {
+		return ErrParticipantExists
 	}
 	id, _ := result.LastInsertId()
 	p.ID = id
@@ -156,14 +143,6 @@ func UpdateParticipantWeight(lotteryID string, userID int64, weight int) error {
 	_, err := db.Exec(`
 		UPDATE participants SET weight = ? WHERE lottery_id = ? AND user_id = ?
 	`, weight, lotteryID, userID)
-	return err
-}
-
-func UpdateParticipantWeightBatch(lotteryID string, weight int) error {
-	db := GetDB()
-	_, err := db.Exec(`
-		UPDATE participants SET weight = ? WHERE lottery_id = ?
-	`, weight, lotteryID)
 	return err
 }
 
@@ -233,26 +212,6 @@ func ValidateEditToken(lotteryID, token string) (bool, error) {
 		return false, err
 	}
 	return count > 0, nil
-}
-
-func DeleteEditToken(token string) error {
-	db := GetDB()
-	_, err := db.Exec(`DELETE FROM edit_tokens WHERE token = ?`, token)
-	return err
-}
-
-func CreateWinner(w *models.Winner) error {
-	db := GetDB()
-	result, err := db.Exec(`
-		INSERT INTO winners (lottery_id, participant_id, prize_id, user_id, username, prize_name)
-		VALUES (?, ?, ?, ?, ?, ?)
-	`, w.LotteryID, w.ParticipantID, w.PrizeID, w.UserID, w.Username, w.PrizeName)
-	if err != nil {
-		return err
-	}
-	id, _ := result.LastInsertId()
-	w.ID = id
-	return nil
 }
 
 func GetWinners(lotteryID string) ([]models.Winner, error) {

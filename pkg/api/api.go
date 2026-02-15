@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"log"
 	"os"
 	"strconv"
@@ -8,8 +9,8 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/static"
-	"github.com/realSunyz/lucky-tgbot/pkg/database"
 	"github.com/realSunyz/lucky-tgbot/pkg/models"
+	"github.com/realSunyz/lucky-tgbot/pkg/service"
 )
 
 type LotteryRequest struct {
@@ -45,91 +46,76 @@ type PrizeWeightRequest struct {
 
 type LotteryResponse struct {
 	*models.Lottery
-	Prizes           []models.Prize       `json:"prizes"`
-	Participants     []models.Participant `json:"participants,omitempty"`
-	ParticipantCount int                  `json:"participant_count"`
-	Winners          []models.Winner      `json:"winners,omitempty"`
+	Prizes           []models.Prize  `json:"prizes"`
+	ParticipantCount int             `json:"participant_count"`
+	Winners          []models.Winner `json:"winners,omitempty"`
 }
 
-func SetupRoutes(app *fiber.App) {
+type Handler struct {
+	service *service.LotteryService
+}
+
+func NewHandler(svc *service.LotteryService) *Handler {
+	return &Handler{service: svc}
+}
+
+func SetupRoutes(app *fiber.App, svc *service.LotteryService) {
+	h := NewHandler(svc)
 	api := app.Group("/api")
 
-	// Public endpoints
-	api.Get("/lottery/:id", getLottery)
-	api.Post("/lottery/:id", createLottery)
-	api.Post("/lottery/:id/join", joinLottery)
-	api.Get("/lottery/:id/results", getResults)
+	api.Get("/lottery/:id", h.getLottery)
+	api.Post("/lottery/:id", h.createLottery)
+	api.Post("/lottery/:id/join", h.joinLottery)
+	api.Get("/lottery/:id/results", h.getResults)
 
-	// Protected endpoints (require token query param)
-	api.Put("/lottery/:id", tokenAuth, updateLottery)
-	api.Get("/lottery/:id/participants", tokenAuth, getParticipants)
-	api.Put("/lottery/:id/participants/:uid", tokenAuth, updateParticipantWeight)
-	api.Post("/lottery/:id/participants/:uid/prize_weight", tokenAuth, updatePrizeWeight)
-	api.Delete("/lottery/:id/participants/:uid/prize_weight/:prize_id", tokenAuth, deletePrizeWeight)
-	api.Delete("/lottery/:id/participants/:uid", tokenAuth, removeParticipant)
-	api.Post("/lottery/:id/draw", tokenAuth, drawLottery)
+	api.Put("/lottery/:id", h.tokenAuth, h.updateLottery)
+	api.Get("/lottery/:id/participants", h.tokenAuth, h.getParticipants)
+	api.Put("/lottery/:id/participants/:uid", h.tokenAuth, h.updateParticipantWeight)
+	api.Post("/lottery/:id/participants/:uid/prize_weight", h.tokenAuth, h.updatePrizeWeight)
+	api.Delete("/lottery/:id/participants/:uid/prize_weight/:prize_id", h.tokenAuth, h.deletePrizeWeight)
+	api.Delete("/lottery/:id/participants/:uid", h.tokenAuth, h.removeParticipant)
+	api.Post("/lottery/:id/draw", h.tokenAuth, h.drawLottery)
 }
 
-func tokenAuth(c fiber.Ctx) error {
+func (h *Handler) tokenAuth(c fiber.Ctx) error {
 	lotteryID := c.Params("id")
 	token := c.Query("token")
-
-	// tokenAuth
 	if token == "" {
 		return SendError(c, fiber.StatusUnauthorized, ERR_UNAUTHORIZED, "Token required")
 	}
 
-	valid, err := database.ValidateEditToken(lotteryID, token)
-	if err != nil {
+	if err := h.service.ValidateEditToken(lotteryID, token); err != nil {
+		if errors.Is(err, service.ErrTokenInvalid) {
+			return SendError(c, fiber.StatusUnauthorized, ERR_TOKEN_INVALID, "Invalid or expired token")
+		}
 		log.Printf("Token validation error: %v", err)
 		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, "Token validation failed")
-	}
-
-	if !valid {
-		return SendError(c, fiber.StatusUnauthorized, ERR_TOKEN_INVALID, "Invalid or expired token")
 	}
 
 	return c.Next()
 }
 
-func getLottery(c fiber.Ctx) error {
+func (h *Handler) getLottery(c fiber.Ctx) error {
 	id := c.Params("id")
 
-	lottery, err := database.GetLottery(id)
+	snapshot, err := h.service.GetLotterySnapshot(id)
 	if err != nil {
+		if errors.Is(err, service.ErrLotteryNotFound) {
+			return SendError(c, fiber.StatusNotFound, ERR_NOT_FOUND, "Lottery not found")
+		}
 		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
 	}
-	if lottery == nil {
-		return SendError(c, fiber.StatusNotFound, ERR_NOT_FOUND, "Lottery not found")
-	}
 
-	prizes, _ := database.GetPrizes(id)
-	count, _ := database.GetParticipantCount(id)
-
-	response := LotteryResponse{
-		Lottery:          lottery,
-		Prizes:           prizes,
-		ParticipantCount: count,
-	}
-
-	if lottery.Status == "completed" {
-		winners, _ := database.GetWinners(id)
-		response.Winners = winners
-	}
-
-	return c.JSON(response)
+	return c.JSON(LotteryResponse{
+		Lottery:          snapshot.Lottery,
+		Prizes:           snapshot.Prizes,
+		ParticipantCount: snapshot.ParticipantCount,
+		Winners:          snapshot.Winners,
+	})
 }
 
-func createLottery(c fiber.Ctx) error {
+func (h *Handler) createLottery(c fiber.Ctx) error {
 	id := c.Params("id")
-
-	existing, err := database.GetLottery(id)
-	if err != nil {
-		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
-	}
-	if existing != nil && existing.Status != "draft" {
-		return SendError(c, fiber.StatusConflict, ERR_CONFLICT, "Lottery already exists")
-	}
 
 	var req LotteryRequest
 	if err := c.Bind().Body(&req); err != nil {
@@ -145,162 +131,111 @@ func createLottery(c fiber.Ctx) error {
 		drawTime = &t
 	}
 
-	lottery := &models.Lottery{
-		ID:          id,
+	prizes := make([]models.Prize, 0, len(req.Prizes))
+	for _, p := range req.Prizes {
+		prizes = append(prizes, models.Prize{Name: p.Name, Quantity: p.Quantity})
+	}
+
+	lottery, createdPrizes, err := h.service.CreateLottery(id, service.CreateLotteryInput{
 		Title:       req.Title,
 		Description: req.Description,
-		CreatorID:   req.CreatorID,
 		DrawMode:    req.DrawMode,
 		DrawTime:    drawTime,
 		MaxEntries:  req.MaxEntries,
-		Status:      "active",
-	}
-
-	if existing != nil {
-		lottery.CreatedAt = existing.CreatedAt
-		if err := database.UpdateLottery(lottery); err != nil {
-			return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
-		}
-		database.DeletePrizes(id)
-	} else {
-		if err := database.CreateLottery(lottery); err != nil {
-			return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
-		}
-	}
-
-	for _, p := range req.Prizes {
-		prize := &models.Prize{
-			LotteryID: id,
-			Name:      p.Name,
-			Quantity:  p.Quantity,
-		}
-		if err := database.CreatePrize(prize); err != nil {
-			return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
-		}
-	}
-
-	prizes, _ := database.GetPrizes(id)
-
-	go notifyLotteryCreated(lottery, prizes)
-
-	return c.Status(fiber.StatusCreated).JSON(LotteryResponse{
-		Lottery: lottery,
-		Prizes:  prizes,
+		Prizes:      prizes,
+		CreatorID:   req.CreatorID,
 	})
-}
-
-func updateLottery(c fiber.Ctx) error {
-	id := c.Params("id")
-
-	lottery, err := database.GetLottery(id)
 	if err != nil {
+		if errors.Is(err, service.ErrLotteryConflict) {
+			return SendError(c, fiber.StatusConflict, ERR_CONFLICT, "Lottery already exists")
+		}
 		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
 	}
-	if lottery == nil {
-		return SendError(c, fiber.StatusNotFound, ERR_NOT_FOUND, "Lottery not found")
-	}
-	if lottery.Status == "completed" {
-		return SendError(c, fiber.StatusBadRequest, ERR_LOTTERY_ENDED, "Cannot modify completed lottery")
-	}
+
+	return c.Status(fiber.StatusCreated).JSON(LotteryResponse{Lottery: lottery, Prizes: createdPrizes})
+}
+
+func (h *Handler) updateLottery(c fiber.Ctx) error {
+	id := c.Params("id")
 
 	var req LotteryRequest
 	if err := c.Bind().Body(&req); err != nil {
 		return SendError(c, fiber.StatusBadRequest, ERR_BAD_REQUEST, "Invalid request body")
 	}
 
-	if req.Title != "" {
-		lottery.Title = req.Title
-	}
-	if req.Description != "" {
-		lottery.Description = req.Description
-	}
-	if req.DrawMode != "" {
-		lottery.DrawMode = req.DrawMode
-	}
+	var drawTime *time.Time
 	if req.DrawTime != nil && *req.DrawTime != "" {
-		t, _ := time.Parse(time.RFC3339, *req.DrawTime)
-		lottery.DrawTime = &t
-	}
-	if req.MaxEntries != nil {
-		lottery.MaxEntries = req.MaxEntries
-	}
-
-	if err := database.UpdateLottery(lottery); err != nil {
-		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
+		t, err := time.Parse(time.RFC3339, *req.DrawTime)
+		if err != nil {
+			return SendError(c, fiber.StatusBadRequest, ERR_BAD_REQUEST, "Invalid draw_time format")
+		}
+		drawTime = &t
 	}
 
-	if len(req.Prizes) > 0 {
-		database.DeletePrizes(id)
-		for _, p := range req.Prizes {
-			prize := &models.Prize{
-				LotteryID: id,
-				Name:      p.Name,
-				Quantity:  p.Quantity,
-			}
-			database.CreatePrize(prize)
+	prizes := make([]models.Prize, 0, len(req.Prizes))
+	for _, p := range req.Prizes {
+		prizes = append(prizes, models.Prize{Name: p.Name, Quantity: p.Quantity})
+	}
+
+	lottery, updatedPrizes, err := h.service.UpdateLottery(id, service.UpdateLotteryInput{
+		Title:         req.Title,
+		Description:   req.Description,
+		DrawMode:      req.DrawMode,
+		DrawTime:      drawTime,
+		MaxEntries:    req.MaxEntries,
+		Prizes:        prizes,
+		ReplacePrizes: len(req.Prizes) > 0,
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrLotteryNotFound):
+			return SendError(c, fiber.StatusNotFound, ERR_NOT_FOUND, "Lottery not found")
+		case errors.Is(err, service.ErrLotteryEnded):
+			return SendError(c, fiber.StatusBadRequest, ERR_LOTTERY_ENDED, "Cannot modify completed lottery")
+		default:
+			return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
 		}
 	}
 
-	prizes, _ := database.GetPrizes(id)
-	return c.JSON(LotteryResponse{
-		Lottery: lottery,
-		Prizes:  prizes,
-	})
+	return c.JSON(LotteryResponse{Lottery: lottery, Prizes: updatedPrizes})
 }
 
-func joinLottery(c fiber.Ctx) error {
+func (h *Handler) joinLottery(c fiber.Ctx) error {
 	id := c.Params("id")
-
-	lottery, err := database.GetLottery(id)
-	if err != nil {
-		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
-	}
-	if lottery == nil {
-		return SendError(c, fiber.StatusNotFound, ERR_NOT_FOUND, "Lottery not found")
-	}
-	if lottery.Status != "active" {
-		return SendError(c, fiber.StatusBadRequest, ERR_LOTTERY_NOT_ACTIVE, "Lottery is not active")
-	}
-
-	if lottery.MaxEntries != nil {
-		count, _ := database.GetParticipantCount(id)
-		if count >= *lottery.MaxEntries {
-			return SendError(c, fiber.StatusBadRequest, ERR_LOTTERY_FULL, "Lottery is full")
-		}
-	}
 
 	var req JoinRequest
 	if err := c.Bind().Body(&req); err != nil {
 		return SendError(c, fiber.StatusBadRequest, ERR_BAD_REQUEST, "Invalid request body")
 	}
 
-	participant := &models.Participant{
-		LotteryID: id,
+	_, participant, err := h.service.JoinLottery(id, service.JoinInput{
 		UserID:    req.UserID,
 		Username:  req.Username,
 		FirstName: req.FirstName,
 		LastName:  req.LastName,
-		Weight:    1,
-	}
-
-	if err := database.AddParticipant(participant); err != nil {
-		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
-	}
-
-	if lottery.DrawMode == "full" && lottery.MaxEntries != nil {
-		count, _ := database.GetParticipantCount(id)
-		if count >= *lottery.MaxEntries {
-			go performDraw(id)
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrLotteryNotFound):
+			return SendError(c, fiber.StatusNotFound, ERR_NOT_FOUND, "Lottery not found")
+		case errors.Is(err, service.ErrLotteryNotActive):
+			return SendError(c, fiber.StatusBadRequest, ERR_LOTTERY_NOT_ACTIVE, "Lottery is not active")
+		case errors.Is(err, service.ErrLotteryFull):
+			return SendError(c, fiber.StatusBadRequest, ERR_LOTTERY_FULL, "Lottery is full")
+		case errors.Is(err, service.ErrParticipantExists):
+			return SendError(c, fiber.StatusConflict, ERR_CONFLICT, "User already joined")
+		default:
+			return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
 		}
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(participant)
 }
 
-func getParticipants(c fiber.Ctx) error {
+func (h *Handler) getParticipants(c fiber.Ctx) error {
 	id := c.Params("id")
 
-	participants, err := database.GetParticipants(id)
+	participants, err := h.service.GetParticipants(id)
 	if err != nil {
 		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
 	}
@@ -308,7 +243,7 @@ func getParticipants(c fiber.Ctx) error {
 	return c.JSON(participants)
 }
 
-func updateParticipantWeight(c fiber.Ctx) error {
+func (h *Handler) updateParticipantWeight(c fiber.Ctx) error {
 	lotteryID := c.Params("id")
 	uidStr := c.Params("uid")
 	userID, err := strconv.ParseInt(uidStr, 10, 64)
@@ -320,41 +255,39 @@ func updateParticipantWeight(c fiber.Ctx) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return SendError(c, fiber.StatusBadRequest, ERR_BAD_REQUEST, "Invalid request body")
 	}
-
 	if req.Weight < 0 {
 		return SendError(c, fiber.StatusBadRequest, ERR_BAD_REQUEST, "Weight must be non-negative")
 	}
 
-	if err := database.UpdateParticipantWeight(lotteryID, int64(userID), req.Weight); err != nil {
+	if err := h.service.UpdateParticipantWeight(lotteryID, userID, req.Weight); err != nil {
 		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
 	}
 
 	return c.JSON(fiber.Map{"success": true})
 }
 
-func deletePrizeWeight(c fiber.Ctx) error {
+func (h *Handler) deletePrizeWeight(c fiber.Ctx) error {
 	lotteryID := c.Params("id")
 	uidStr := c.Params("uid")
-	prizeIdStr := c.Params("prize_id")
+	prizeIDStr := c.Params("prize_id")
 
 	userID, err := strconv.ParseInt(uidStr, 10, 64)
 	if err != nil {
 		return SendError(c, fiber.StatusBadRequest, ERR_BAD_REQUEST, "Invalid user ID")
 	}
-
-	prizeID, err := strconv.ParseInt(prizeIdStr, 10, 64)
+	prizeID, err := strconv.ParseInt(prizeIDStr, 10, 64)
 	if err != nil {
 		return SendError(c, fiber.StatusBadRequest, ERR_BAD_REQUEST, "Invalid prize ID")
 	}
 
-	if err := database.DeletePrizeWeight(lotteryID, userID, prizeID); err != nil {
+	if err := h.service.DeletePrizeWeight(lotteryID, userID, prizeID); err != nil {
 		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
 	}
 
 	return c.JSON(fiber.Map{"success": true})
 }
 
-func updatePrizeWeight(c fiber.Ctx) error {
+func (h *Handler) updatePrizeWeight(c fiber.Ctx) error {
 	lotteryID := c.Params("id")
 	uidStr := c.Params("uid")
 	userID, err := strconv.ParseInt(uidStr, 10, 64)
@@ -366,19 +299,18 @@ func updatePrizeWeight(c fiber.Ctx) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return SendError(c, fiber.StatusBadRequest, ERR_BAD_REQUEST, "Invalid request body")
 	}
-
 	if req.Weight < 0 {
 		return SendError(c, fiber.StatusBadRequest, ERR_BAD_REQUEST, "Weight must be non-negative")
 	}
 
-	if err := database.SetPrizeWeight(lotteryID, int64(userID), req.PrizeID, req.Weight); err != nil {
+	if err := h.service.SetPrizeWeight(lotteryID, userID, req.PrizeID, req.Weight); err != nil {
 		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
 	}
 
 	return c.JSON(fiber.Map{"success": true})
 }
 
-func removeParticipant(c fiber.Ctx) error {
+func (h *Handler) removeParticipant(c fiber.Ctx) error {
 	lotteryID := c.Params("id")
 	uidStr := c.Params("uid")
 	userID, err := strconv.ParseInt(uidStr, 10, 64)
@@ -386,78 +318,55 @@ func removeParticipant(c fiber.Ctx) error {
 		return SendError(c, fiber.StatusBadRequest, ERR_BAD_REQUEST, "Invalid user ID")
 	}
 
-	if err := database.RemoveParticipant(lotteryID, int64(userID)); err != nil {
+	if err := h.service.RemoveParticipant(lotteryID, userID); err != nil {
 		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
 	}
 
 	return c.JSON(fiber.Map{"success": true})
 }
 
-func getResults(c fiber.Ctx) error {
+func (h *Handler) getResults(c fiber.Ctx) error {
 	id := c.Params("id")
 
-	lottery, err := database.GetLottery(id)
+	lottery, prizes, winners, err := h.service.GetResults(id)
 	if err != nil {
-		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
-	}
-	if lottery == nil {
-		return SendError(c, fiber.StatusNotFound, ERR_NOT_FOUND, "Lottery not found")
-	}
-
-	if lottery.Status != "completed" {
-		return SendError(c, fiber.StatusBadRequest, ERR_LOTTERY_NOT_ACTIVE, "Lottery not yet drawn")
-	}
-
-	winners, err := database.GetWinners(id)
-	if err != nil {
-		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
+		switch {
+		case errors.Is(err, service.ErrLotteryNotFound):
+			return SendError(c, fiber.StatusNotFound, ERR_NOT_FOUND, "Lottery not found")
+		case errors.Is(err, service.ErrLotteryNotDrawn):
+			return SendError(c, fiber.StatusBadRequest, ERR_LOTTERY_NOT_ACTIVE, "Lottery not yet drawn")
+		default:
+			return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
+		}
 	}
 
-	prizes, _ := database.GetPrizes(id)
-
-	return c.JSON(fiber.Map{
-		"lottery": lottery,
-		"prizes":  prizes,
-		"winners": winners,
-	})
+	return c.JSON(fiber.Map{"lottery": lottery, "prizes": prizes, "winners": winners})
 }
 
-func drawLottery(c fiber.Ctx) error {
+func (h *Handler) drawLottery(c fiber.Ctx) error {
 	id := c.Params("id")
 
-	lottery, err := database.GetLottery(id)
+	winners, err := h.service.DrawLottery(id)
 	if err != nil {
-		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
-	}
-	if lottery == nil {
-		return SendError(c, fiber.StatusNotFound, ERR_NOT_FOUND, "Lottery not found")
-	}
-	if lottery.Status == "completed" {
-		return SendError(c, fiber.StatusBadRequest, ERR_LOTTERY_ENDED, "Lottery already completed")
+		switch {
+		case errors.Is(err, service.ErrLotteryNotFound):
+			return SendError(c, fiber.StatusNotFound, ERR_NOT_FOUND, "Lottery not found")
+		case errors.Is(err, service.ErrLotteryEnded):
+			return SendError(c, fiber.StatusBadRequest, ERR_LOTTERY_ENDED, "Lottery already completed")
+		case errors.Is(err, service.ErrLotteryNotActive):
+			return SendError(c, fiber.StatusBadRequest, ERR_LOTTERY_NOT_ACTIVE, "Lottery is not active")
+		default:
+			return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
+		}
 	}
 
-	winners, err := performDraw(id)
-	if err != nil {
-		return SendError(c, fiber.StatusInternalServerError, ERR_INTERNAL, err.Error())
-	}
-
-	return c.JSON(fiber.Map{
-		"success": true,
-		"winners": winners,
-	})
+	return c.JSON(fiber.Map{"success": true, "winners": winners})
 }
 
-func StartServer() {
-	database.GetDB()
-
-	app := fiber.New(fiber.Config{
-		AppName: "Lucky TG Bot API",
-	})
-
+func StartServer(svc *service.LotteryService) {
+	app := fiber.New(fiber.Config{AppName: "Lucky TG Bot API"})
 	app.Use("/assets", static.New("./web/dist/assets"))
-
-	SetupRoutes(app)
-
+	SetupRoutes(app, svc)
 	app.Get("/*", func(c fiber.Ctx) error {
 		return c.SendFile("./web/dist/index.html")
 	})
@@ -472,13 +381,3 @@ func StartServer() {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }
-
-var NotifyLotteryCreated func(lottery *models.Lottery, prizes []models.Prize)
-
-func notifyLotteryCreated(lottery *models.Lottery, prizes []models.Prize) {
-	if NotifyLotteryCreated != nil {
-		NotifyLotteryCreated(lottery, prizes)
-	}
-}
-
-var NotifyWinners func(lotteryID string, winners []models.Winner)

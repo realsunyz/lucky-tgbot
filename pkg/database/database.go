@@ -37,9 +37,22 @@ func GetDB() *sql.DB {
 			log.Fatalf("Failed to open database: %v", err)
 		}
 
+		// SQLite performs best with a single shared connection in this app.
+		db.SetMaxOpenConns(1)
+		db.SetMaxIdleConns(1)
+
 		// Enable WAL mode for better concurrent performance
 		if _, err := db.Exec("PRAGMA journal_mode=WAL"); err != nil {
 			log.Printf("Warning: Failed to enable WAL mode: %v", err)
+		}
+		if _, err := db.Exec("PRAGMA foreign_keys=ON"); err != nil {
+			log.Printf("Warning: Failed to enable foreign key constraints: %v", err)
+		}
+		if _, err := db.Exec("PRAGMA busy_timeout=5000"); err != nil {
+			log.Printf("Warning: Failed to set busy timeout: %v", err)
+		}
+		if _, err := db.Exec("PRAGMA synchronous=NORMAL"); err != nil {
+			log.Printf("Warning: Failed to set synchronous mode: %v", err)
 		}
 
 		// Initialize schema
@@ -126,8 +139,12 @@ func initSchema() error {
 	-- Indexes for better query performance
 	CREATE INDEX IF NOT EXISTS idx_prizes_lottery ON prizes(lottery_id);
 	CREATE INDEX IF NOT EXISTS idx_participants_lottery ON participants(lottery_id);
+	CREATE INDEX IF NOT EXISTS idx_participants_lottery_joined ON participants(lottery_id, joined_at);
 	CREATE INDEX IF NOT EXISTS idx_edit_tokens_lottery ON edit_tokens(lottery_id);
+	CREATE INDEX IF NOT EXISTS idx_edit_tokens_expires ON edit_tokens(expires_at);
 	CREATE INDEX IF NOT EXISTS idx_winners_lottery ON winners(lottery_id);
+	CREATE INDEX IF NOT EXISTS idx_lotteries_timed_due ON lotteries(status, draw_mode, draw_time);
+	CREATE INDEX IF NOT EXISTS idx_lotteries_draft_created ON lotteries(status, created_at);
 	`
 
 	_, err := db.Exec(schema)

@@ -19,6 +19,9 @@ func StartCleanupWorker() {
 			if err := cleanupExpiredTokens(); err != nil {
 				log.Printf("Error cleaning up expired tokens: %v", err)
 			}
+			if err := checkpointWAL(); err != nil {
+				log.Printf("Error checkpointing WAL: %v", err)
+			}
 		}
 	}()
 }
@@ -50,4 +53,10 @@ func cleanupExpiredTokens() error {
 		log.Printf("Cleaned up %d expired edit tokens", rowsAffected)
 	}
 	return nil
+}
+
+func checkpointWAL() error {
+	db := database.GetDB()
+	_, err := db.Exec(`PRAGMA wal_checkpoint(TRUNCATE)`)
+	return err
 }

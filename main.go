@@ -12,6 +12,8 @@ import (
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/realSunyz/lucky-tgbot/pkg/api"
+	"github.com/realSunyz/lucky-tgbot/pkg/database"
+	"github.com/realSunyz/lucky-tgbot/pkg/service"
 	"github.com/realSunyz/lucky-tgbot/pkg/worker"
 	"github.com/realSunyz/lucky-tgbot/plugin/lottery"
 	"github.com/realSunyz/lucky-tgbot/plugin/slash"
@@ -24,15 +26,6 @@ func main() {
 
 	source := rand.NewSource(time.Now().UnixNano())
 	r := rand.New(source)
-
-	// Start HTTP API server in background
-	go api.StartServer()
-
-	// Start timed lottery draw checker
-	api.StartTimedDrawChecker()
-
-	// Start cleanup worker
-	worker.StartCleanupWorker()
 
 	opts := []bot.Option{
 		bot.WithDefaultHandler(func(ctx context.Context, b *bot.Bot, update *models.Update) {
@@ -77,8 +70,17 @@ func main() {
 		return
 	}
 
-	// Set bot instance for lottery plugin
-	lottery.SetBot(b)
+	lotteryService := service.NewLotteryService(database.GetDB(), lottery.NewTelegramNotifier(b))
+	lottery.SetService(lotteryService)
+
+	// Start HTTP API server in background
+	go api.StartServer(lotteryService)
+
+	// Start timed lottery draw checker
+	api.StartTimedDrawChecker(lotteryService)
+
+	// Start cleanup worker
+	worker.StartCleanupWorker()
 
 	log.Println("Bot started successfully")
 	b.Start(ctx)
