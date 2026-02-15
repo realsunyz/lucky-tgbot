@@ -38,9 +38,9 @@ func main() {
 				return
 			}
 
-			// Handle lottery commands first
-			if strings.HasPrefix(inputText, "/lottery") {
-				log.Printf("Matched /lottery command: %s", inputText)
+			// Handle create commands first
+			if strings.HasPrefix(inputText, "/create") {
+				log.Printf("Matched /create command: %s", inputText)
 				lottery.HandleLotteryCommand(ctx, b, update)
 				return
 			}

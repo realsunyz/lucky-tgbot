@@ -70,7 +70,7 @@ func HandleLotteryCommand(ctx context.Context, b *bot.Bot, update *tgmodels.Upda
 	}
 
 	createLink := fmt.Sprintf("%s/create/%s", getWebDomain(), lottery.ID)
-	message := fmt.Sprintf("新抽奖创建成功\n\n请在 30 分钟内点击下方链接完成抽奖设置:\n%s", createLink)
+	message := fmt.Sprintf("✅ 新抽奖创建成功\n\n请在 30 分钟内点击下方链接完成抽奖设置:\n%s", createLink)
 
 	_, sendErr := b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
@@ -126,7 +126,7 @@ func HandleEditCommand(ctx context.Context, b *bot.Bot, update *tgmodels.Update)
 	}
 
 	editLink := fmt.Sprintf("%s/edit/%s?token=%s", getWebDomain(), lotteryID, token)
-	message := fmt.Sprintf("编辑抽奖\n\n抽奖 ID: <code>%s</code>\n标题: %s\n\n编辑链接有效期 1 小时：\n%s", lotteryID, lottery.Title, editLink)
+	message := fmt.Sprintf("✏️ 编辑抽奖\n\n抽奖 ID: <code>%s</code>\n标题: %s\n\n编辑链接有效期 1 小时:\n%s", lotteryID, lottery.Title, editLink)
 
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
@@ -145,7 +145,7 @@ func HandleStartCommand(ctx context.Context, b *bot.Bot, update *tgmodels.Update
 	if len(parts) < 2 {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
-			Text:   "Hi there!",
+			Text:   "👋🏻 Hi there!",
 		})
 		return
 	}
@@ -187,7 +187,11 @@ func handleJoin(ctx context.Context, b *bot.Bot, update *tgmodels.Update, lotter
 		case errors.Is(err, service.ErrLotteryFull):
 			b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: "❌ 该抽奖名额已满"})
 		case errors.Is(err, service.ErrParticipantExists):
-			b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: fmt.Sprintf("您已参与抽奖 %s, 请勿重复点击.", lotteryID)})
+			b.SendMessage(ctx, &bot.SendMessageParams{
+				ChatID:    update.Message.Chat.ID,
+				Text:      fmt.Sprintf("⚠️ 您已参与抽奖 <code>%s</code>, 请勿重复点击", lotteryID),
+				ParseMode: tgmodels.ParseModeHTML,
+			})
 		default:
 			log.Printf("failed to join lottery %s: %v", lotteryID, err)
 			b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: "❌ 参与失败，请稍后重试"})
@@ -197,7 +201,7 @@ func handleJoin(ctx context.Context, b *bot.Bot, update *tgmodels.Update, lotter
 
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
-		Text: fmt.Sprintf("参加抽奖成功\n\n抽奖 ID: %s\n抽奖标题: %s\n\n更多详情请前往网页端查看:\n%s/lottery/%s",
+		Text: fmt.Sprintf("✅ 参加抽奖成功\n\n抽奖 ID: <code>%s</code>\n抽奖标题: %s\n\n更多详情请前往网页端查看:\n%s/lottery/%s",
 			lottery.ID, lottery.Title, getWebDomain(), lottery.ID),
 		ParseMode: tgmodels.ParseModeHTML,
 	})
@@ -214,7 +218,7 @@ func sendLotteryCreatedMessage(ctx context.Context, b *bot.Bot, lottery *dbmodel
 	}
 	prizesText := strings.Join(prizeLines, "\n")
 	lotteryLink := fmt.Sprintf("%s/lottery/%s", getWebDomain(), lottery.ID)
-	message := fmt.Sprintf("抽奖 ID: %s\n抽奖标题: %s\n奖品内容:\n%s\n\n更多详情请前往网页端查看:\n%s", lottery.ID, lottery.Title, prizesText, lotteryLink)
+	message := fmt.Sprintf("抽奖 ID: <code>%s</code>\n抽奖标题: %s\n奖品内容:\n%s\n\n更多详情请前往网页端查看:\n%s", lottery.ID, lottery.Title, prizesText, lotteryLink)
 
 	botUser, err := b.GetMe(ctx)
 	botUsername := ""
@@ -259,7 +263,7 @@ func sendWinnerNotification(ctx context.Context, b *bot.Bot, lottery *dbmodels.L
 
 	for userID, prizes := range userWins {
 		prizeText := strings.Join(prizes, ", ")
-		message := fmt.Sprintf("中奖通知\n\n恭喜您在抽奖活动 %s 中获奖! \n抽奖标题: %s\n获得奖品: %s\n\n请及时联系 <a href=\"tg://user?id=%d\">%s</a> 领取奖品.",
+		message := fmt.Sprintf("🎉 中奖通知\n\n恭喜您在抽奖活动 %s 中获奖! \n抽奖标题: %s\n获得奖品: %s\n\n请及时联系 <a href=\"tg://user?id=%d\">%s</a> 领取奖品",
 			lottery.Title, lottery.Title, prizeText, lottery.CreatorID, creatorName)
 		b.SendMessage(ctx, &bot.SendMessageParams{ChatID: userID, Text: message, ParseMode: tgmodels.ParseModeHTML})
 	}
@@ -268,7 +272,7 @@ func sendWinnerNotification(ctx context.Context, b *bot.Bot, lottery *dbmodels.L
 	for _, w := range winners {
 		winnerLines = append(winnerLines, fmt.Sprintf("- %d 获得了 \"%s\"", w.UserID, w.PrizeName))
 	}
-	creatorMessage := fmt.Sprintf("开奖已完成\n\n抽奖 ID: %s\n抽奖标题: %s\n中奖用户列表:\n%s\n\n更多详情请前往网页端查看:\n%s",
+	creatorMessage := fmt.Sprintf("🎊 开奖已完成\n\n抽奖 ID: %s\n抽奖标题: %s\n中奖用户列表:\n%s\n\n更多详情请前往网页端查看:\n%s",
 		lottery.ID, lottery.Title, strings.Join(winnerLines, "\n"), resultLink)
 	b.SendMessage(ctx, &bot.SendMessageParams{ChatID: lottery.CreatorID, Text: creatorMessage})
 }
