@@ -7,6 +7,7 @@ on:
   pull_request:
     branches:
       - "main"
+  workflow_dispatch:
 
 env:
   VULTR_REGISTRY: sjc.vultrcr.com
@@ -15,27 +16,33 @@ env:
 
 jobs:
   docker-dev:
-    name: Build Docker Image
+    name: Build Docker Image (${{ matrix.goarch }})
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
       attestations: write
       id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goarch: amd64
+            platform: linux/amd64
+          - goarch: arm64
+            platform: linux/arm64
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up QEMU
-        id: qemu
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
       - name: Login in to Vultr Container Registry
-        id: vultr
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.VULTR_REGISTRY }}
@@ -43,31 +50,84 @@ jobs:
           password: ${{ secrets.VULTR_PASSWORD }}
 
       - name: Log in to GitHub Container Registry
-        id: ghcr
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build Image
+      - name: Build and Push
         id: image
         uses: docker/build-push-action@v6
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
+          platforms: ${{ matrix.platform }}
+          push: ${{ github.event_name != 'pull_request' }}
           tags: |
-            ${{ env.VULTR_REGISTRY }}/${{ env.VULTR_IMAGE_NAME }}:dev
-            ${{ env.VULTR_REGISTRY }}/${{ env.VULTR_IMAGE_NAME }}:dev-${{ github.sha }}
-            ghcr.io/${{ env.GHCR_IMAGE_NAME }}:dev
-            ghcr.io/${{ env.GHCR_IMAGE_NAME }}:dev-${{ github.sha }}
+            ${{ env.VULTR_REGISTRY }}/${{ env.VULTR_IMAGE_NAME }}:dev-${{ matrix.goarch }}
+            ${{ env.VULTR_REGISTRY }}/${{ env.VULTR_IMAGE_NAME }}:dev-${{ github.sha }}-${{ matrix.goarch }}
+            ghcr.io/${{ env.GHCR_IMAGE_NAME }}:dev-${{ matrix.goarch }}
+            ghcr.io/${{ env.GHCR_IMAGE_NAME }}:dev-${{ github.sha }}-${{ matrix.goarch }}
+          cache-from: type=gha,scope=dev-${{ matrix.goarch }}
+          cache-to: type=gha,mode=max,scope=dev-${{ matrix.goarch }}
 
-      - name: Generate Artifact Attestation (OCI Referrers)
-        id: attest
+      - name: Generate Artifact Attestation (GHCR)
+        if: github.event_name != 'pull_request'
+        uses: actions/attest-build-provenance@v3
+        continue-on-error: true
+        with:
+          subject-name: ghcr.io/${{ env.GHCR_IMAGE_NAME }}
+          subject-digest: ${{ steps.image.outputs.digest }}
+          push-to-registry: true
+
+      - name: Generate Artifact Attestation (Vultr)
+        if: github.event_name != 'pull_request'
         uses: actions/attest-build-provenance@v3
         continue-on-error: true
         with:
           subject-name: ${{ env.VULTR_REGISTRY }}/${{ env.VULTR_IMAGE_NAME }}
           subject-digest: ${{ steps.image.outputs.digest }}
           push-to-registry: true
+
+  docker-dev-manifest:
+    name: Merge Docker Manifests
+    runs-on: ubuntu-latest
+    needs: docker-dev
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login in to Vultr Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.VULTR_REGISTRY }}
+          username: ${{ secrets.VULTR_USERNAME }}
+          password: ${{ secrets.VULTR_PASSWORD }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Merge Vultr manifest
+        run: |
+          docker buildx imagetools create \
+            -t ${{ env.VULTR_REGISTRY }}/${{ env.VULTR_IMAGE_NAME }}:dev \
+            -t ${{ env.VULTR_REGISTRY }}/${{ env.VULTR_IMAGE_NAME }}:dev-${{ github.sha }} \
+            ${{ env.VULTR_REGISTRY }}/${{ env.VULTR_IMAGE_NAME }}:dev-${{ github.sha }}-amd64 \
+            ${{ env.VULTR_REGISTRY }}/${{ env.VULTR_IMAGE_NAME }}:dev-${{ github.sha }}-arm64
+
+      - name: Merge GHCR manifest
+        run: |
+          docker buildx imagetools create \
+            -t ghcr.io/${{ env.GHCR_IMAGE_NAME }}:dev \
+            -t ghcr.io/${{ env.GHCR_IMAGE_NAME }}:dev-${{ github.sha }} \
+            ghcr.io/${{ env.GHCR_IMAGE_NAME }}:dev-${{ github.sha }}-amd64 \
+            ghcr.io/${{ env.GHCR_IMAGE_NAME }}:dev-${{ github.sha }}-arm64
