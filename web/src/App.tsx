@@ -3,6 +3,7 @@ import { Toaster } from "@/components/ui/sonner";
 import CreateLotteryPage from "@/pages/CreateLotteryPage";
 import LotteryPage from "@/pages/LotteryPage";
 import EditLotteryPage from "@/pages/EditLotteryPage";
+import TosPage from "@/pages/TosPage";
 
 import { ThemeProvider } from "@/components/theme-provider";
 import Layout from "@/components/layout";
@@ -16,6 +17,7 @@ function App() {
             <Route path="/create/:id" element={<CreateLotteryPage />} />
             <Route path="/lottery/:id" element={<LotteryPage />} />
             <Route path="/edit/:id" element={<EditLotteryPage />} />
+            <Route path="/tos" element={<TosPage />} />
             <Route
               path="/"
               element={

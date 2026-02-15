@@ -40,7 +40,6 @@ func main() {
 
 			// Handle create commands first
 			if strings.HasPrefix(inputText, "/create") {
-				logger.Infof("matched /create command: %s", inputText)
 				lottery.HandleLotteryCommand(ctx, b, update)
 				return
 			}

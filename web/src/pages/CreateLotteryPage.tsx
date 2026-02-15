@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Card,
   CardContent,
@@ -62,6 +63,7 @@ export default function CreateLotteryPage() {
   const [prizes, setPrizes] = useState<PrizeInput[]>([
     { name: "", quantity: 1 },
   ]);
+  const [isTosAgreed, setIsTosAgreed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -205,6 +207,11 @@ export default function CreateLotteryPage() {
         );
         return;
       }
+    }
+
+    if (!isTosAgreed) {
+      setErrorMsg("请阅读并同意服务条款");
+      return;
     }
 
     setIsSubmitting(true);
@@ -583,9 +590,31 @@ export default function CreateLotteryPage() {
               </Card>
 
               <div className="sticky top-8 space-y-4">
+                <div className="flex items-center justify-center space-x-2 px-1">
+                  <Checkbox
+                    id="tos"
+                    checked={isTosAgreed}
+                    onCheckedChange={(checked) =>
+                      setIsTosAgreed(checked as boolean)
+                    }
+                  />
+                  <label
+                    htmlFor="tos"
+                    className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    我已阅读并同意{" "}
+                    <Link
+                      to="/tos"
+                      target="_blank"
+                      className="text-primary hover:underline"
+                    >
+                      服务条款
+                    </Link>
+                  </label>
+                </div>
                 <Button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !isTosAgreed}
                   className="w-full py-6 text-lg shadow-lg font-bold"
                   size="lg"
                 >

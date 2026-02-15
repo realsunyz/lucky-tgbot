@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, Link } from "react-router-dom";
 import { Header } from "@/components/header";
 
 export default function Layout() {
@@ -8,7 +8,13 @@ export default function Layout() {
       <main className="flex-1 flex flex-col min-h-0 overflow-y-auto">
         <Outlet />
         <footer className="py-6 text-center text-xs text-muted-foreground">
-          <p>由 Lucky Bot 提供服务 · 用户协议适用</p>
+          <p>
+            由 Lucky Bot 提供服务 ·{" "}
+            <Link to="/tos" className="underline hover:text-foreground">
+              服务条款
+            </Link>
+            适用
+          </p>
         </footer>
       </main>
     </div>

@@ -218,7 +218,7 @@ func sendLotteryCreatedMessage(ctx context.Context, b *bot.Bot, lottery *dbmodel
 	}
 	prizesText := strings.Join(prizeLines, "\n")
 	lotteryLink := fmt.Sprintf("%s/lottery/%s", getWebDomain(), lottery.ID)
-	message := fmt.Sprintf("抽奖 ID: <code>%s</code>\n抽奖标题: %s\n奖品内容:\n%s\n\n更多详情请前往网页端查看:\n%s", lottery.ID, lottery.Title, prizesText, lotteryLink)
+	message := fmt.Sprintf("抽奖 ID: <code>%s</code>\n抽奖标题: %s\n奖品内容:\n%s\n\n服务条款及更多详情请前往网页端查看:\n%s", lottery.ID, lottery.Title, prizesText, lotteryLink)
 
 	botUser, err := b.GetMe(ctx)
 	botUsername := ""
