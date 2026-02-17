@@ -75,9 +75,11 @@ func initSchema() error {
 		creator_id INTEGER NOT NULL,
 		draw_mode TEXT NOT NULL CHECK(draw_mode IN ('timed', 'full', 'manual')),
 		draw_time DATETIME,
+		draw_time DATETIME,
 		max_entries INTEGER,
 		status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft', 'active', 'completed')),
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		is_weights_disabled INTEGER DEFAULT 0
 	);
 
 	-- Prizes table
@@ -151,6 +153,14 @@ func initSchema() error {
 	if err != nil {
 		return fmt.Errorf("failed to execute schema: %w", err)
 	}
+
+	// Manual migration for is_weights_disabled
+	_, err = db.Exec(`ALTER TABLE lotteries ADD COLUMN is_weights_disabled INTEGER DEFAULT 0;`)
+	if err != nil {
+		// Ignore error if column already exists
+		logger.Infof("Migration is_weights_disabled: %v (safe to ignore if column exists)", err)
+	}
+
 	return nil
 }
 

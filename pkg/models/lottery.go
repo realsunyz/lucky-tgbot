@@ -3,15 +3,16 @@ package models
 import "time"
 
 type Lottery struct {
-	ID          string     `json:"id"`
-	Title       string     `json:"title"`
-	Description string     `json:"description"`
-	CreatorID   int64      `json:"creator_id"`
-	DrawMode    string     `json:"draw_mode"`
-	DrawTime    *time.Time `json:"draw_time"`
-	MaxEntries  *int       `json:"max_entries"`
-	Status      string     `json:"status"`
-	CreatedAt   time.Time  `json:"created_at"`
+	ID                string     `json:"id"`
+	Title             string     `json:"title"`
+	Description       string     `json:"description"`
+	CreatorID         int64      `json:"creator_id"`
+	DrawMode          string     `json:"draw_mode"`
+	DrawTime          *time.Time `json:"draw_time"`
+	MaxEntries        *int       `json:"max_entries"`
+	Status            string     `json:"status"`
+	CreatedAt         time.Time  `json:"created_at"`
+	IsWeightsDisabled bool       `json:"is_weights_disabled"`
 }
 
 type Prize struct {

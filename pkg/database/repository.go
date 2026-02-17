@@ -20,9 +20,9 @@ func CreateLottery(lottery *models.Lottery) error {
 	}
 
 	_, err := db.Exec(`
-		INSERT INTO lotteries (id, title, description, creator_id, draw_mode, draw_time, max_entries, status, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, lottery.ID, lottery.Title, lottery.Description, lottery.CreatorID, lottery.DrawMode, lottery.DrawTime, lottery.MaxEntries, lottery.Status, lottery.CreatedAt)
+		INSERT INTO lotteries (id, title, description, creator_id, draw_mode, draw_time, max_entries, status, created_at, is_weights_disabled)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, lottery.ID, lottery.Title, lottery.Description, lottery.CreatorID, lottery.DrawMode, lottery.DrawTime, lottery.MaxEntries, lottery.Status, lottery.CreatedAt, lottery.IsWeightsDisabled)
 	return err
 }
 
@@ -30,9 +30,9 @@ func GetLottery(id string) (*models.Lottery, error) {
 	db := GetDB()
 	lottery := &models.Lottery{}
 	err := db.QueryRow(`
-		SELECT id, title, description, creator_id, draw_mode, draw_time, max_entries, status, created_at
+		SELECT id, title, description, creator_id, draw_mode, draw_time, max_entries, status, created_at, is_weights_disabled
 		FROM lotteries WHERE id = ?
-	`, id).Scan(&lottery.ID, &lottery.Title, &lottery.Description, &lottery.CreatorID, &lottery.DrawMode, &lottery.DrawTime, &lottery.MaxEntries, &lottery.Status, &lottery.CreatedAt)
+	`, id).Scan(&lottery.ID, &lottery.Title, &lottery.Description, &lottery.CreatorID, &lottery.DrawMode, &lottery.DrawTime, &lottery.MaxEntries, &lottery.Status, &lottery.CreatedAt, &lottery.IsWeightsDisabled)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -42,9 +42,9 @@ func GetLottery(id string) (*models.Lottery, error) {
 func UpdateLottery(lottery *models.Lottery) error {
 	db := GetDB()
 	_, err := db.Exec(`
-		UPDATE lotteries SET title = ?, description = ?, draw_mode = ?, draw_time = ?, max_entries = ?, status = ?
+		UPDATE lotteries SET title = ?, description = ?, draw_mode = ?, draw_time = ?, max_entries = ?, status = ?, is_weights_disabled = ?
 		WHERE id = ?
-	`, lottery.Title, lottery.Description, lottery.DrawMode, lottery.DrawTime, lottery.MaxEntries, lottery.Status, lottery.ID)
+	`, lottery.Title, lottery.Description, lottery.DrawMode, lottery.DrawTime, lottery.MaxEntries, lottery.Status, lottery.IsWeightsDisabled, lottery.ID)
 	return err
 }
 

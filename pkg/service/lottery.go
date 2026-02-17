@@ -39,23 +39,25 @@ type LotterySnapshot struct {
 }
 
 type CreateLotteryInput struct {
-	Title       string
-	Description string
-	DrawMode    string
-	DrawTime    *time.Time
-	MaxEntries  *int
-	Prizes      []models.Prize
-	CreatorID   int64
+	Title             string
+	Description       string
+	DrawMode          string
+	DrawTime          *time.Time
+	MaxEntries        *int
+	Prizes            []models.Prize
+	CreatorID         int64
+	IsWeightsDisabled bool
 }
 
 type UpdateLotteryInput struct {
-	Title         string
-	Description   string
-	DrawMode      string
-	DrawTime      *time.Time
-	MaxEntries    *int
-	Prizes        []models.Prize
-	ReplacePrizes bool
+	Title             string
+	Description       string
+	DrawMode          string
+	DrawTime          *time.Time
+	MaxEntries        *int
+	Prizes            []models.Prize
+	ReplacePrizes     bool
+	IsWeightsDisabled bool
 }
 
 type JoinInput struct {
@@ -161,14 +163,15 @@ func (s *LotteryService) CreateLottery(id string, input CreateLotteryInput) (*mo
 	}
 
 	lottery := &models.Lottery{
-		ID:          id,
-		Title:       input.Title,
-		Description: input.Description,
-		CreatorID:   input.CreatorID,
-		DrawMode:    input.DrawMode,
-		DrawTime:    input.DrawTime,
-		MaxEntries:  input.MaxEntries,
-		Status:      "active",
+		ID:                id,
+		Title:             input.Title,
+		Description:       input.Description,
+		CreatorID:         input.CreatorID,
+		DrawMode:          input.DrawMode,
+		DrawTime:          input.DrawTime,
+		MaxEntries:        input.MaxEntries,
+		Status:            "active",
+		IsWeightsDisabled: input.IsWeightsDisabled,
 	}
 
 	tx, err := s.db.BeginTx(context.Background(), nil)
@@ -248,6 +251,7 @@ func (s *LotteryService) UpdateLottery(id string, input UpdateLotteryInput) (*mo
 	if input.MaxEntries != nil {
 		lottery.MaxEntries = input.MaxEntries
 	}
+	lottery.IsWeightsDisabled = input.IsWeightsDisabled
 
 	tx, err := s.db.BeginTx(context.Background(), nil)
 	if err != nil {
@@ -600,7 +604,7 @@ func createLotteryTx(tx *sql.Tx, lottery *models.Lottery) error {
 func getLotteryTx(tx *sql.Tx, id string) (*models.Lottery, error) {
 	lottery := &models.Lottery{}
 	err := tx.QueryRow(`
-		SELECT id, title, description, creator_id, draw_mode, draw_time, max_entries, status, created_at
+		SELECT id, title, description, creator_id, draw_mode, draw_time, max_entries, status, created_at, is_weights_disabled
 		FROM lotteries WHERE id = ?
 	`, id).Scan(
 		&lottery.ID,
@@ -612,6 +616,7 @@ func getLotteryTx(tx *sql.Tx, id string) (*models.Lottery, error) {
 		&lottery.MaxEntries,
 		&lottery.Status,
 		&lottery.CreatedAt,
+		&lottery.IsWeightsDisabled,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
@@ -625,9 +630,9 @@ func getLotteryTx(tx *sql.Tx, id string) (*models.Lottery, error) {
 func updateLotteryTx(tx *sql.Tx, lottery *models.Lottery) error {
 	_, err := tx.Exec(`
 		UPDATE lotteries
-		SET title = ?, description = ?, draw_mode = ?, draw_time = ?, max_entries = ?, status = ?
+		SET title = ?, description = ?, draw_mode = ?, draw_time = ?, max_entries = ?, status = ?, is_weights_disabled = ?
 		WHERE id = ?
-	`, lottery.Title, lottery.Description, lottery.DrawMode, lottery.DrawTime, lottery.MaxEntries, lottery.Status, lottery.ID)
+	`, lottery.Title, lottery.Description, lottery.DrawMode, lottery.DrawTime, lottery.MaxEntries, lottery.Status, lottery.IsWeightsDisabled, lottery.ID)
 	return err
 }
 

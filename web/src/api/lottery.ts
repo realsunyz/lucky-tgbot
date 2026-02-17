@@ -11,6 +11,7 @@ export interface Lottery {
   max_entries?: number;
   status: "draft" | "active" | "completed";
   created_at: string;
+  is_weights_disabled?: boolean;
 }
 
 export interface Prize {
@@ -76,6 +77,7 @@ export interface LotteryResponse {
   max_entries?: number;
   status: "draft" | "active" | "completed";
   created_at: string;
+  is_weights_disabled?: boolean;
   prizes: Prize[];
   participants?: Participant[];
   participant_count?: number;
@@ -90,6 +92,7 @@ export interface CreateLotteryRequest {
   max_entries?: number;
   prizes: Prize[];
   creator_id: number;
+  is_weights_disabled?: boolean;
 }
 
 // Get lottery details

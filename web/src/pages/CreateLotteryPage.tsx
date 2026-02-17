@@ -63,6 +63,7 @@ export default function CreateLotteryPage() {
   const [prizes, setPrizes] = useState<PrizeInput[]>([
     { name: "", quantity: 1 },
   ]);
+  const [isWeightsDisabled, setIsWeightsDisabled] = useState(false);
   const [isTosAgreed, setIsTosAgreed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -90,6 +91,8 @@ export default function CreateLotteryPage() {
               data.prizes.map((p) => ({ name: p.name, quantity: p.quantity })),
             );
           }
+          if (data.is_weights_disabled)
+            setIsWeightsDisabled(data.is_weights_disabled);
         })
         .catch((err) => {
           console.error(err);
@@ -234,6 +237,7 @@ export default function CreateLotteryPage() {
         max_entries: drawMode === "full" ? parseInt(maxEntries) : undefined,
         prizes: validPrizes,
         creator_id: creatorId,
+        is_weights_disabled: isWeightsDisabled,
       });
 
       toast.success("抽奖创建成功！");
@@ -586,6 +590,26 @@ export default function CreateLotteryPage() {
                       </div>
                     )}
                   </RadioGroup>
+                  <Separator />
+                  <div className="flex items-start space-x-3 space-y-0">
+                    <Checkbox
+                      id="weights-disabled"
+                      checked={isWeightsDisabled}
+                      onCheckedChange={(checked) =>
+                        setIsWeightsDisabled(checked as boolean)
+                      }
+                      className="mt-1"
+                    />
+                    <Label
+                      htmlFor="weights-disabled"
+                      className="cursor-pointer font-normal grid gap-1.5"
+                    >
+                      <span className="font-semibold">禁用权重功能</span>
+                      <span className="text-sm text-muted-foreground">
+                        勾选后，后台管理页面将隐藏权重设置入口
+                      </span>
+                    </Label>
+                  </div>
                 </CardContent>
               </Card>
 

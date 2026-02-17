@@ -21,6 +21,7 @@ import {
   ListCollapse,
   AlertCircle,
   TriangleAlert,
+  BadgeCheck,
 } from "lucide-react";
 
 export default function LotteryPage() {
@@ -312,8 +313,11 @@ export default function LotteryPage() {
                 </div>
                 <div className="flex items-center justify-between p-3 bg-muted/40 rounded-lg">
                   <span className="text-sm font-medium">开奖模式</span>
-                  <span className="font-mono text-sm">
+                  <span className="font-mono text-sm flex items-center gap-1">
                     {getDrawModeText(lottery.draw_mode)}
+                    {lottery.is_weights_disabled && (
+                      <BadgeCheck className="w-4 h-4 text-green-500 fill-green-500/10" />
+                    )}
                   </span>
                 </div>
                 {lottery.draw_mode === "timed" && lottery.draw_time && (

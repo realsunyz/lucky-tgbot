@@ -14,13 +14,14 @@ import (
 )
 
 type LotteryRequest struct {
-	Title       string  `json:"title"`
-	Description string  `json:"description"`
-	DrawMode    string  `json:"draw_mode"`
-	DrawTime    *string `json:"draw_time"`
-	MaxEntries  *int    `json:"max_entries"`
-	Prizes      []Prize `json:"prizes"`
-	CreatorID   int64   `json:"creator_id"`
+	Title             string  `json:"title"`
+	Description       string  `json:"description"`
+	DrawMode          string  `json:"draw_mode"`
+	DrawTime          *string `json:"draw_time"`
+	MaxEntries        *int    `json:"max_entries"`
+	Prizes            []Prize `json:"prizes"`
+	CreatorID         int64   `json:"creator_id"`
+	IsWeightsDisabled bool    `json:"is_weights_disabled"`
 }
 
 type Prize struct {
@@ -138,13 +139,14 @@ func (h *Handler) createLottery(c fiber.Ctx) error {
 	}
 
 	lottery, createdPrizes, err := h.service.CreateLottery(id, service.CreateLotteryInput{
-		Title:       req.Title,
-		Description: req.Description,
-		DrawMode:    req.DrawMode,
-		DrawTime:    drawTime,
-		MaxEntries:  req.MaxEntries,
-		Prizes:      prizes,
-		CreatorID:   req.CreatorID,
+		Title:             req.Title,
+		Description:       req.Description,
+		DrawMode:          req.DrawMode,
+		DrawTime:          drawTime,
+		MaxEntries:        req.MaxEntries,
+		Prizes:            prizes,
+		CreatorID:         req.CreatorID,
+		IsWeightsDisabled: req.IsWeightsDisabled,
 	})
 	if err != nil {
 		if errors.Is(err, service.ErrLotteryConflict) {
@@ -180,13 +182,14 @@ func (h *Handler) updateLottery(c fiber.Ctx) error {
 	}
 
 	lottery, updatedPrizes, err := h.service.UpdateLottery(id, service.UpdateLotteryInput{
-		Title:         req.Title,
-		Description:   req.Description,
-		DrawMode:      req.DrawMode,
-		DrawTime:      drawTime,
-		MaxEntries:    req.MaxEntries,
-		Prizes:        prizes,
-		ReplacePrizes: len(req.Prizes) > 0,
+		Title:             req.Title,
+		Description:       req.Description,
+		DrawMode:          req.DrawMode,
+		DrawTime:          drawTime,
+		MaxEntries:        req.MaxEntries,
+		Prizes:            prizes,
+		ReplacePrizes:     len(req.Prizes) > 0,
+		IsWeightsDisabled: req.IsWeightsDisabled,
 	})
 	if err != nil {
 		switch {

@@ -51,6 +51,7 @@ interface ParticipantsTableProps {
   token: string;
   onDelete: (participant: Participant) => Promise<void>;
   onDataUpdate: () => Promise<void>;
+  isWeightsDisabled?: boolean;
 }
 
 export function ParticipantsTable({
@@ -60,6 +61,7 @@ export function ParticipantsTable({
   token,
   onDelete,
   onDataUpdate,
+  isWeightsDisabled,
 }: ParticipantsTableProps) {
   const [deletingParticipant, setDeletingParticipant] =
     useState<Participant | null>(null);
@@ -88,7 +90,11 @@ export function ParticipantsTable({
       <Card className="gap-4">
         <CardHeader>
           <CardTitle>参与者列表</CardTitle>
-          <CardDescription>查看所有参与用户并修改权重。</CardDescription>
+          <CardDescription>
+            {isWeightsDisabled
+              ? "查看所有参与用户"
+              : "查看所有参与用户并修改权重"}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {participants.length === 0 ? (
@@ -122,13 +128,15 @@ export function ParticipantsTable({
                         </TableCell>
                         <TableCell className="text-right pr-4">
                           <div className="flex justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => setWeightEditingParticipant(p)}
-                            >
-                              <Settings2 className="w-4 h-4 text-muted-foreground" />
-                            </Button>
+                            {!isWeightsDisabled && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setWeightEditingParticipant(p)}
+                              >
+                                <Settings2 className="w-4 h-4 text-muted-foreground" />
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="icon"
@@ -153,14 +161,16 @@ export function ParticipantsTable({
                   >
                     <UserDisplay participant={p} mobile />
                     <div className="flex items-center gap-1 shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-muted-foreground"
-                        onClick={() => setWeightEditingParticipant(p)}
-                      >
-                        <Settings2 className="w-4 h-4" />
-                      </Button>
+                      {!isWeightsDisabled && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground"
+                          onClick={() => setWeightEditingParticipant(p)}
+                        >
+                          <Settings2 className="w-4 h-4" />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"

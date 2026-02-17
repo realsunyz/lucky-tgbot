@@ -144,6 +144,11 @@ export default function EditLotteryPage() {
               token={token!}
               onDelete={handleRemoveParticipant}
               onDataUpdate={loadData}
+              isWeightsDisabled={
+                searchParams.get("weight") === "true"
+                  ? false
+                  : lottery.is_weights_disabled
+              }
             />
           </div>
         </div>
