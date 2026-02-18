@@ -96,8 +96,11 @@ export interface CreateLotteryRequest {
 }
 
 // Get lottery details
-export async function getLottery(id: string): Promise<LotteryResponse> {
-  const res = await fetch(`${API_BASE}/api/lottery/${id}`);
+export async function getLottery(
+  id: string,
+  signal?: AbortSignal,
+): Promise<LotteryResponse> {
+  const res = await fetch(`${API_BASE}/api/lottery/${id}`, { signal });
   if (!res.ok) {
     const error = await res.json();
     throw error;
@@ -166,9 +169,11 @@ export async function joinLottery(
 export async function getParticipants(
   id: string,
   token: string,
+  signal?: AbortSignal,
 ): Promise<Participant[]> {
   const res = await fetch(
     `${API_BASE}/api/lottery/${id}/participants?token=${token}`,
+    { signal },
   );
   if (!res.ok) {
     const error = await res.json();

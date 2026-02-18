@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   getLottery,
   getParticipants,
@@ -17,8 +17,17 @@ interface UseLotteryDataReturn {
   participants: Participant[];
   loading: boolean;
   error: string | null;
-  loadData: () => Promise<void>;
+  loadData: (options?: { signal?: AbortSignal }) => Promise<void>;
   setParticipants: React.Dispatch<React.SetStateAction<Participant[]>>;
+}
+
+function isAbortError(err: unknown) {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "name" in err &&
+    (err as { name?: string }).name === "AbortError"
+  );
 }
 
 export function useLotteryData({
@@ -29,26 +38,46 @@ export function useLotteryData({
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
 
-  const loadData = useCallback(async () => {
-    if (!id || !token) return;
+  const loadData = useCallback(
+    async (options?: { signal?: AbortSignal }) => {
+      const signal = options?.signal;
+      if (!id || !token) {
+        setLottery(null);
+        setParticipants([]);
+        setLoading(false);
+        return;
+      }
 
-    try {
-      const [lotteryData, participantsData] = await Promise.all([
-        getLottery(id),
-        getParticipants(id, token),
-      ]);
-      setLottery(lotteryData);
-      setParticipants(participantsData || []);
-    } catch (err) {
-      setError(getErrorMessage(err));
-    } finally {
-      setLoading(false);
-    }
-  }, [id, token]);
+      const requestId = ++requestIdRef.current;
+
+      try {
+        const [lotteryData, participantsData] = await Promise.all([
+          getLottery(id, signal),
+          getParticipants(id, token, signal),
+        ]);
+
+        if (signal?.aborted || requestId !== requestIdRef.current) return;
+        setError(null);
+        setLottery(lotteryData);
+        setParticipants(participantsData || []);
+      } catch (err) {
+        if (isAbortError(err) || requestId !== requestIdRef.current) return;
+        setError(getErrorMessage(err));
+      } finally {
+        if (!signal?.aborted && requestId === requestIdRef.current) {
+          setLoading(false);
+        }
+      }
+    },
+    [id, token],
+  );
 
   useEffect(() => {
-    loadData();
+    const controller = new AbortController();
+    loadData({ signal: controller.signal });
+    return () => controller.abort();
   }, [loadData]);
 
   return {

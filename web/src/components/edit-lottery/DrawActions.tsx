@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { Drawer } from "vaul";
 
@@ -30,6 +30,7 @@ import { zhCN } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { updateLottery, type LotteryResponse } from "@/api/lottery";
 import { getErrorMessage } from "@/utils/errors";
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 interface DrawActionsProps {
   lottery: LotteryResponse;
@@ -81,12 +82,10 @@ export function DrawActions({
 
   // Button confirm state
   const [isConfirming, setIsConfirming] = useState(false);
+  const confirmTimerRef = useRef<number | null>(null);
 
   // Check if mobile
-  const isMobile = useMemo(() => {
-    if (typeof window === "undefined") return false;
-    return window.matchMedia("(max-width: 640px)").matches;
-  }, []);
+  const isMobile = useMediaQuery("(max-width: 640px)");
 
   // Reset form when dialog opens
   useEffect(() => {
@@ -104,9 +103,13 @@ export function DrawActions({
     }
   }, [open, lottery]);
 
-  // Reset confirmation
+  // Cleanup confirm timer on unmount
   useEffect(() => {
-    setIsConfirming(false);
+    return () => {
+      if (confirmTimerRef.current !== null) {
+        window.clearTimeout(confirmTimerRef.current);
+      }
+    };
   }, []);
 
   const currentModeInfo = DRAW_MODE_LABELS[lottery.draw_mode];
@@ -171,12 +174,22 @@ export function DrawActions({
   const handleDrawClick = async () => {
     if (!isConfirming) {
       setIsConfirming(true);
-      setTimeout(() => setIsConfirming(false), 3000);
+      if (confirmTimerRef.current !== null) {
+        window.clearTimeout(confirmTimerRef.current);
+      }
+      confirmTimerRef.current = window.setTimeout(() => {
+        setIsConfirming(false);
+        confirmTimerRef.current = null;
+      }, 3000);
       return;
     }
 
     const success = await onDraw();
     if (success) {
+      if (confirmTimerRef.current !== null) {
+        window.clearTimeout(confirmTimerRef.current);
+        confirmTimerRef.current = null;
+      }
       setIsConfirming(false);
     }
   };

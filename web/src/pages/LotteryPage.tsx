@@ -23,6 +23,16 @@ import {
   TriangleAlert,
   BadgeCheck,
 } from "lucide-react";
+import { getErrorMessage } from "@/utils/errors";
+
+function isAbortError(err: unknown) {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "name" in err &&
+    (err as { name?: string }).name === "AbortError"
+  );
+}
 
 export default function LotteryPage() {
   const { id } = useParams<{ id: string }>();
@@ -31,12 +41,28 @@ export default function LotteryPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!id) return;
+    if (!id) {
+      setLoading(false);
+      return;
+    }
 
-    getLottery(id)
+    const controller = new AbortController();
+    setLoading(true);
+    setError(null);
+
+    getLottery(id, controller.signal)
       .then(setLottery)
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+      .catch((err) => {
+        if (isAbortError(err)) return;
+        setError(getErrorMessage(err));
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      });
+
+    return () => controller.abort();
   }, [id]);
 
   if (loading) {

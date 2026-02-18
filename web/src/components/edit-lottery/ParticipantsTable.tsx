@@ -43,6 +43,7 @@ import {
   deletePrizeWeight,
 } from "@/api/lottery";
 import { getErrorMessage } from "@/utils/errors";
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 interface ParticipantsTableProps {
   participants: Participant[];
@@ -68,11 +69,7 @@ export function ParticipantsTable({
   const [weightEditingParticipant, setWeightEditingParticipant] =
     useState<Participant | null>(null);
 
-  // Check if mobile
-  const isMobile = useMemo(() => {
-    if (typeof window === "undefined") return false;
-    return window.matchMedia("(max-width: 640px)").matches;
-  }, []);
+  const isMobile = useMediaQuery("(max-width: 640px)");
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleString("zh-CN");

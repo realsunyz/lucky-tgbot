@@ -40,6 +40,15 @@ interface PrizeInput {
   quantity: number;
 }
 
+function isAbortError(err: unknown) {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "name" in err &&
+    (err as { name?: string }).name === "AbortError"
+  );
+}
+
 export default function CreateLotteryPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -70,7 +79,8 @@ export default function CreateLotteryPage() {
 
   useEffect(() => {
     if (id) {
-      getLottery(id)
+      const controller = new AbortController();
+      getLottery(id, controller.signal)
         .then((data) => {
           if (data.status !== "draft") {
             setIsNotDraft(true);
@@ -95,13 +105,19 @@ export default function CreateLotteryPage() {
             setIsWeightsDisabled(data.is_weights_disabled);
         })
         .catch((err) => {
-          console.error(err);
+          if (isAbortError(err)) return;
           setErrorMsg(getErrorMessage(err));
         })
         .finally(() => {
-          setIsLoadingLottery(false);
+          if (!controller.signal.aborted) {
+            setIsLoadingLottery(false);
+          }
         });
+
+      return () => controller.abort();
     }
+
+    setIsLoadingLottery(false);
   }, [id]);
 
   const MAX_TITLE_LENGTH = 20;
