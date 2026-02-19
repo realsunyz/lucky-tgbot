@@ -18,16 +18,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
   ResponsiveDrawer as Dialog,
   ResponsiveDrawerContent as DialogContent,
   ResponsiveDrawerDescription as DialogDescription,
@@ -35,7 +25,15 @@ import {
   ResponsiveDrawerTitle as DialogTitle,
   ResponsiveDrawerFooter as DialogFooter,
 } from "@/components/ui/responsive-drawer";
-import { Trash2, Settings2, Search, Plus, RotateCcw } from "lucide-react";
+import {
+  Trash2,
+  Settings2,
+  Search,
+  Plus,
+  RotateCcw,
+  Check,
+  X,
+} from "lucide-react";
 import type { Participant, Prize } from "@/api/lottery";
 import {
   updateParticipantWeight,
@@ -83,7 +81,7 @@ export function ParticipantsTable({
   return (
     <>
       <Card className="gap-4">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <div className="space-y-1">
             <CardTitle>参与者列表</CardTitle>
             <CardDescription>
@@ -137,23 +135,46 @@ export function ParticipantsTable({
                           {formatDate(p.joined_at)}
                         </TableCell>
                         <TableCell className="text-right pr-4">
-                          <div className="flex justify-end gap-1">
+                          <div className="flex justify-end gap-1 items-center">
                             {!isWeightsDisabled && (
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                className="h-8 w-8 text-muted-foreground"
                                 onClick={() => setWeightEditingParticipant(p)}
                               >
-                                <Settings2 className="w-4 h-4 text-muted-foreground" />
+                                <Settings2 className="w-4 h-4" />
                               </Button>
                             )}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => setDeletingParticipant(p)}
-                            >
-                              <Trash2 className="w-4 h-4 text-destructive" />
-                            </Button>
+                            {deletingParticipant?.user_id === p.user_id ? (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  onClick={handleConfirmDelete}
+                                >
+                                  <Check className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                  onClick={() => setDeletingParticipant(null)}
+                                >
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                onClick={() => setDeletingParticipant(p)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -181,14 +202,35 @@ export function ParticipantsTable({
                           <Settings2 className="w-4 h-4" />
                         </Button>
                       )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-destructive hover:text-destructive"
-                        onClick={() => setDeletingParticipant(p)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      {deletingParticipant?.user_id === p.user_id ? (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={handleConfirmDelete}
+                          >
+                            <Check className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                            onClick={() => setDeletingParticipant(null)}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          onClick={() => setDeletingParticipant(p)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -197,38 +239,6 @@ export function ParticipantsTable({
           )}
         </CardContent>
       </Card>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog
-        open={!!deletingParticipant}
-        onOpenChange={(open) => !open && setDeletingParticipant(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认移除参与者？</AlertDialogTitle>
-            <AlertDialogDescription>
-              您确定要移除{" "}
-              <span className="font-medium text-foreground">
-                {deletingParticipant?.username ||
-                  deletingParticipant?.first_name ||
-                  deletingParticipant?.user_id}
-              </span>{" "}
-              吗？此操作无法撤销。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeletingParticipant(null)}>
-              取消
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmDelete}
-              className="bg-destructive hover:bg-destructive/90"
-            >
-              确认移除
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Prize Weight Edit Dialog/Drawer */}
       <Dialog
@@ -248,7 +258,7 @@ export function ParticipantsTable({
                   weightEditingParticipant?.first_name ||
                   weightEditingParticipant?.user_id}
               </span>{" "}
-              设置特定奖品的权重。默认权重为全局权重。
+              设置特定奖品的权重
             </DialogDescription>
           </DialogHeader>
           <PrizeWeightEditor

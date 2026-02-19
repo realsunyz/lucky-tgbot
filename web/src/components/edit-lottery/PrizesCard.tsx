@@ -16,17 +16,8 @@ import {
   ResponsiveDrawerFooter as DialogFooter,
   ResponsiveDrawerHeader as DialogHeader,
   ResponsiveDrawerTitle as DialogTitle,
-} from "@/components/ui/responsive-drawer";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "../ui/responsive-drawer";
+
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -37,7 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Trash2, Loader2 } from "lucide-react";
+import { Plus, Trash2, Loader2, Check, X } from "lucide-react";
 import { updateLottery, type Prize, type LotteryResponse } from "@/api/lottery";
 import { getErrorMessage } from "@/utils/errors";
 import { cn } from "@/lib/utils";
@@ -239,16 +230,39 @@ export function PrizesCard({
                       />
                     </TableCell>
                     <TableCell className="text-right pr-4">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={() => setDeletingIndex(index)}
-                        disabled={(lottery.prizes || []).length <= 1}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        <span className="sr-only">删除</span>
-                      </Button>
+                      {deletingIndex === index ? (
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={handleDelete}
+                          >
+                            <Check className="h-4 w-4" />
+                            <span className="sr-only">确认删除</span>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                            onClick={() => setDeletingIndex(null)}
+                          >
+                            <X className="h-4 w-4" />
+                            <span className="sr-only">取消</span>
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => setDeletingIndex(index)}
+                          disabled={(lottery.prizes || []).length <= 1}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <span className="sr-only">删除</span>
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -278,16 +292,39 @@ export function PrizesCard({
                       handleUpdatePrize(index, { quantity: val })
                     }
                   />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 text-destructive hover:text-destructive"
-                    onClick={() => setDeletingIndex(index)}
-                    disabled={(lottery.prizes || []).length <= 1}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    <span className="sr-only">删除</span>
-                  </Button>
+                  {deletingIndex === index ? (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={handleDelete}
+                      >
+                        <Check className="w-4 h-4" />
+                        <span className="sr-only">确认删除</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                        onClick={() => setDeletingIndex(null)}
+                      >
+                        <X className="w-4 h-4" />
+                        <span className="sr-only">取消</span>
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive hover:text-destructive"
+                      onClick={() => setDeletingIndex(index)}
+                      disabled={(lottery.prizes || []).length <= 1}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span className="sr-only">删除</span>
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}
@@ -359,30 +396,6 @@ export function PrizesCard({
       </Dialog>
 
       {/* Delete Confirmation Alert Dialog */}
-      <AlertDialog
-        open={deletingIndex !== null}
-        onOpenChange={(open) => !open && setDeletingIndex(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认删除奖品？</AlertDialogTitle>
-            <AlertDialogDescription>
-              您确定要删除该奖品吗？此操作无法撤销。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeletingIndex(null)}>
-              取消
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive hover:bg-destructive/90"
-            >
-              确认删除
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }
