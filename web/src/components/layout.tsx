@@ -3,9 +3,9 @@ import { Header } from "@/components/header";
 
 export default function Layout() {
   return (
-    <div className="h-dvh flex flex-col overflow-hidden">
+    <div className="fixed inset-0 w-full h-dvh flex flex-col overflow-hidden bg-background text-foreground">
       <Header />
-      <main className="flex-1 flex flex-col min-h-0 overflow-y-auto">
+      <main className="flex-1 flex flex-col min-h-0 overflow-y-auto overscroll-contain">
         <Outlet />
         <footer className="py-6 text-center text-xs text-muted-foreground">
           <p>
