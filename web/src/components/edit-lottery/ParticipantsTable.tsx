@@ -28,13 +28,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Drawer } from "vaul";
+  ResponsiveDrawer as Dialog,
+  ResponsiveDrawerContent as DialogContent,
+  ResponsiveDrawerDescription as DialogDescription,
+  ResponsiveDrawerHeader as DialogHeader,
+  ResponsiveDrawerTitle as DialogTitle,
+  ResponsiveDrawerFooter as DialogFooter,
+} from "@/components/ui/responsive-drawer";
 import { Trash2, Settings2, Search, Plus, RotateCcw } from "lucide-react";
 import type { Participant, Prize } from "@/api/lottery";
 import {
@@ -43,7 +43,6 @@ import {
   deletePrizeWeight,
 } from "@/api/lottery";
 import { getErrorMessage } from "@/utils/errors";
-import { useMediaQuery } from "@/hooks/use-media-query";
 
 interface ParticipantsTableProps {
   participants: Participant[];
@@ -69,8 +68,6 @@ export function ParticipantsTable({
   const [weightEditingParticipant, setWeightEditingParticipant] =
     useState<Participant | null>(null);
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
-
-  const isMobile = useMediaQuery("(max-width: 640px)");
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleString("zh-CN");
@@ -213,7 +210,8 @@ export function ParticipantsTable({
               您确定要移除{" "}
               <span className="font-medium text-foreground">
                 {deletingParticipant?.username ||
-                  deletingParticipant?.first_name}
+                  deletingParticipant?.first_name ||
+                  deletingParticipant?.user_id}
               </span>{" "}
               吗？此操作无法撤销。
             </AlertDialogDescription>
@@ -233,69 +231,35 @@ export function ParticipantsTable({
       </AlertDialog>
 
       {/* Prize Weight Edit Dialog/Drawer */}
-      {!isMobile ? (
-        <Dialog
-          open={!!weightEditingParticipant}
-          onOpenChange={(open) => !open && setWeightEditingParticipant(null)}
+      <Dialog
+        open={!!weightEditingParticipant}
+        onOpenChange={(open) => !open && setWeightEditingParticipant(null)}
+      >
+        <DialogContent
+          className="max-w-md max-h-[80vh] overflow-y-auto"
+          onOpenAutoFocus={(e) => e.preventDefault()}
         >
-          <DialogContent
-            className="max-w-md max-h-[80vh] overflow-y-auto"
-            onOpenAutoFocus={(e) => e.preventDefault()}
-          >
-            <DialogHeader>
-              <DialogTitle>设置奖品权重</DialogTitle>
-              <DialogDescription>
-                为用户{" "}
-                <span className="font-medium text-foreground">
-                  {weightEditingParticipant?.username ||
-                    weightEditingParticipant?.first_name}
-                </span>{" "}
-                设置特定奖品的权重。默认权重为全局权重。
-              </DialogDescription>
-            </DialogHeader>
-            <PrizeWeightEditor
-              participant={weightEditingParticipant}
-              prizes={prizes}
-              lotteryId={lotteryId}
-              token={token}
-              onUpdate={onDataUpdate}
-            />
-          </DialogContent>
-        </Dialog>
-      ) : (
-        <Drawer.Root
-          open={!!weightEditingParticipant}
-          onOpenChange={(open) => !open && setWeightEditingParticipant(null)}
-          repositionInputs={false}
-        >
-          <Drawer.Portal>
-            <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
-            <Drawer.Content className="bg-background flex flex-col rounded-t-2xl max-h-[90vh] fixed bottom-0 left-0 right-0 z-50 outline-none">
-              <div className="p-4 bg-background rounded-t-2xl flex-1 overflow-y-auto">
-                <div className="mx-auto w-12 h-1.5 shrink-0 rounded-full bg-muted mb-4" />
-                <Drawer.Title className="text-lg font-semibold mb-1">
-                  设置奖品权重
-                </Drawer.Title>
-                <Drawer.Description className="text-sm text-muted-foreground mb-6">
-                  为用户{" "}
-                  <span className="font-medium text-foreground">
-                    {weightEditingParticipant?.username ||
-                      weightEditingParticipant?.first_name}
-                  </span>{" "}
-                  设置特定奖品的权重。默认权重为全局权重。
-                </Drawer.Description>
-                <PrizeWeightEditor
-                  participant={weightEditingParticipant}
-                  prizes={prizes}
-                  lotteryId={lotteryId}
-                  token={token}
-                  onUpdate={onDataUpdate}
-                />
-              </div>
-            </Drawer.Content>
-          </Drawer.Portal>
-        </Drawer.Root>
-      )}
+          <DialogHeader>
+            <DialogTitle>设置奖品权重</DialogTitle>
+            <DialogDescription>
+              为用户{" "}
+              <span className="font-medium text-foreground">
+                {weightEditingParticipant?.username ||
+                  weightEditingParticipant?.first_name ||
+                  weightEditingParticipant?.user_id}
+              </span>{" "}
+              设置特定奖品的权重。默认权重为全局权重。
+            </DialogDescription>
+          </DialogHeader>
+          <PrizeWeightEditor
+            participant={weightEditingParticipant}
+            prizes={prizes}
+            lotteryId={lotteryId}
+            token={token}
+            onUpdate={onDataUpdate}
+          />
+        </DialogContent>
+      </Dialog>
 
       <AddParticipantDialog
         open={isAddUserOpen}
@@ -436,7 +400,9 @@ function UserDisplay({
 }) {
   const displayName = participant.username
     ? `@${participant.username}`
-    : `${participant.first_name} ${participant.last_name || ""}`.trim();
+    : participant.first_name
+      ? `${participant.first_name} ${participant.last_name || ""}`.trim()
+      : participant.user_id.toString();
 
   return (
     <span className={mobile ? "text-sm" : ""}>
@@ -654,7 +620,7 @@ function AddParticipantDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
-            <label htmlFor="user_id" className="text-right text-sm font-medium">
+            <label htmlFor="user_id" className="text-left text-sm font-medium">
               User ID
             </label>
             <Input
@@ -667,11 +633,11 @@ function AddParticipantDialog({
               placeholder="12345678"
             />
           </div>
-          <div className="flex justify-end pt-4">
-            <Button type="submit" disabled={loading}>
+          <DialogFooter className="pt-4">
+            <Button type="submit" disabled={loading} className="w-full">
               {loading ? "添加中..." : "确认添加"}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

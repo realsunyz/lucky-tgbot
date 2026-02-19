@@ -191,9 +191,7 @@ export default function CreateLotteryPage() {
       return;
     }
     if (prizes.some((p) => p.quantity < 1 || p.quantity > MAX_PRIZE_QUANTITY)) {
-      setErrorMsg(
-        `奖品数量不得超过 ${MAX_PRIZE_QUANTITY} 个, 请勿尝试绕过限制`,
-      );
+      setErrorMsg(`奖品数量不得超过 ${MAX_PRIZE_QUANTITY} 个`);
       return;
     }
 
@@ -211,9 +209,7 @@ export default function CreateLotteryPage() {
       const maxDate = new Date();
       maxDate.setDate(now.getDate() + MAX_PRIZES_DURATION);
       if (date > maxDate) {
-        setErrorMsg(
-          `开奖时间不得晚于 ${MAX_PRIZES_DURATION} 天后, 请勿尝试绕过限制`,
-        );
+        setErrorMsg(`开奖时间不得晚于 ${MAX_PRIZES_DURATION} 天后`);
         return;
       }
     }
@@ -224,9 +220,7 @@ export default function CreateLotteryPage() {
         return;
       }
       if (parseInt(maxEntries) > MAX_PRIZES_PARTICIPANTS) {
-        setErrorMsg(
-          `最高人数不得超过 ${MAX_PRIZES_PARTICIPANTS} 人, 请勿尝试绕过限制`,
-        );
+        setErrorMsg(`最高人数不得超过 ${MAX_PRIZES_PARTICIPANTS} 人`);
         return;
       }
     }

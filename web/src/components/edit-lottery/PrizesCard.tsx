@@ -10,13 +10,13 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  ResponsiveDrawer as Dialog,
+  ResponsiveDrawerContent as DialogContent,
+  ResponsiveDrawerDescription as DialogDescription,
+  ResponsiveDrawerFooter as DialogFooter,
+  ResponsiveDrawerHeader as DialogHeader,
+  ResponsiveDrawerTitle as DialogTitle,
+} from "@/components/ui/responsive-drawer";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,6 +40,7 @@ import {
 import { Plus, Trash2, Loader2 } from "lucide-react";
 import { updateLottery, type Prize, type LotteryResponse } from "@/api/lottery";
 import { getErrorMessage } from "@/utils/errors";
+import { cn } from "@/lib/utils";
 
 interface PrizesCardProps {
   lottery: LotteryResponse;
@@ -80,8 +81,16 @@ export function PrizesCard({
       toast.error("请输入奖品名称");
       return;
     }
+    if (name.length > 10) {
+      toast.error("奖品名称不得超过 10 字");
+      return;
+    }
     if (isNaN(quantity) || quantity < 1) {
       toast.error("请输入有效的奖品数量");
+      return;
+    }
+    if (quantity > 20) {
+      toast.error("奖品数量不得超过 20 个");
       return;
     }
 
@@ -113,8 +122,16 @@ export function PrizesCard({
       toast.error("奖品名称不能为空");
       return;
     }
+    if (updatedPrize.name.length > 10) {
+      toast.error("奖品名称不得超过 10 字");
+      return;
+    }
     if (updatedPrize.quantity < 1) {
       toast.error("数量必须大于 0");
+      return;
+    }
+    if (updatedPrize.quantity > 20) {
+      toast.error("奖品数量不得超过 20 个");
       return;
     }
 
@@ -283,16 +300,32 @@ export function PrizesCard({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>添加奖品</DialogTitle>
-            <DialogDescription>添加一个新的奖品项到抽奖中</DialogDescription>
+            <DialogDescription>添加一个新的奖品到抽奖中</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-4 pb-4 pt-2">
             <div className="grid gap-2">
-              <Label htmlFor="prize-name">奖品名称</Label>
+              <div className="flex justify-between">
+                <Label htmlFor="prize-name">奖品名称</Label>
+                <span
+                  className={cn(
+                    "text-xs",
+                    prizeName.length > 10
+                      ? "text-destructive"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  {prizeName.length}/10
+                </span>
+              </div>
               <Input
                 id="prize-name"
                 value={prizeName}
                 onChange={(e) => setPrizeName(e.target.value)}
-                placeholder="例如: iPhone 15 Pro"
+                placeholder="必填, 最多 10 字"
+                className={cn(
+                  prizeName.length > 10 &&
+                    "border-destructive focus-visible:ring-destructive",
+                )}
               />
             </div>
             <div className="grid gap-2">
@@ -301,23 +334,25 @@ export function PrizesCard({
                 id="prize-quantity"
                 type="number"
                 min={1}
+                max={20}
                 value={prizeQuantity}
                 onChange={(e) => setPrizeQuantity(e.target.value)}
                 placeholder="1"
+                className={cn(
+                  parseInt(prizeQuantity) > 20 &&
+                    "border-destructive focus-visible:ring-destructive",
+                )}
               />
             </div>
           </div>
           <DialogFooter>
             <Button
-              variant="outline"
-              onClick={() => setIsDialogOpen(false)}
+              onClick={handleSaveNew}
               disabled={isSaving}
+              className="w-full"
             >
-              取消
-            </Button>
-            <Button onClick={handleSaveNew} disabled={isSaving}>
               {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              保存
+              确认添加
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -400,7 +435,11 @@ function InlineTextEdit({
         onChange={(e) => setCurrentValue(e.target.value)}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
-        className="h-8"
+        className={cn(
+          "h-8",
+          currentValue.length > 10 &&
+            "border-destructive focus-visible:ring-destructive",
+        )}
       />
     );
   }
@@ -471,7 +510,11 @@ function InlineNumberEdit({
         onChange={(e) => setCurrentValue(e.target.value)}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
-        className="h-7 w-20 text-center text-base font-mono mx-auto"
+        className={cn(
+          "h-7 w-20 text-center text-base font-mono mx-auto",
+          parseInt(currentValue) > 20 &&
+            "border-destructive focus-visible:ring-destructive",
+        )}
       />
     );
   }

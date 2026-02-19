@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { Drawer } from "vaul";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,14 +12,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  ResponsiveDrawer as Dialog,
+  ResponsiveDrawerContent as DialogContent,
+  ResponsiveDrawerDescription as DialogDescription,
+  ResponsiveDrawerFooter as DialogFooter,
+  ResponsiveDrawerHeader as DialogHeader,
+  ResponsiveDrawerTitle as DialogTitle,
+  ResponsiveDrawerTrigger as DialogTrigger,
+} from "@/components/ui/responsive-drawer";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
@@ -30,7 +29,6 @@ import { zhCN } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { updateLottery, type LotteryResponse } from "@/api/lottery";
 import { getErrorMessage } from "@/utils/errors";
-import { useMediaQuery } from "@/hooks/use-media-query";
 
 interface DrawActionsProps {
   lottery: LotteryResponse;
@@ -85,7 +83,6 @@ export function DrawActions({
   const confirmTimerRef = useRef<number | null>(null);
 
   // Check if mobile
-  const isMobile = useMediaQuery("(max-width: 640px)");
 
   // Reset form when dialog opens
   useEffect(() => {
@@ -328,55 +325,23 @@ export function DrawActions({
             </div>
           </div>
 
-          {/* Desktop: Dialog */}
-          {!isMobile ? (
-            <Dialog open={open} onOpenChange={setOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                  修改
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>修改开奖方式</DialogTitle>
-                  <DialogDescription>
-                    选择新的开奖方式并保存设置
-                  </DialogDescription>
-                </DialogHeader>
-                {drawModeFormContent}
-                <DialogFooter>{saveButtonContent}</DialogFooter>
-              </DialogContent>
-            </Dialog>
-          ) : (
-            /* Mobile: Drawer */
-            <Drawer.Root
-              open={open}
-              onOpenChange={setOpen}
-              repositionInputs={false}
-            >
-              <Drawer.Trigger asChild>
-                <Button variant="outline" size="sm">
-                  修改
-                </Button>
-              </Drawer.Trigger>
-              <Drawer.Portal>
-                <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
-                <Drawer.Content className="bg-background flex flex-col rounded-t-2xl h-fit fixed bottom-0 left-0 right-0 z-50 outline-none">
-                  <div className="p-4 bg-background rounded-t-2xl flex-1">
-                    <div className="mx-auto w-12 h-1.5 shrink-0 rounded-full bg-muted mb-4" />
-                    <Drawer.Title className="text-lg font-semibold mb-1">
-                      修改开奖方式
-                    </Drawer.Title>
-                    <Drawer.Description className="text-sm text-muted-foreground mb-6">
-                      选择新的开奖方式并保存设置
-                    </Drawer.Description>
-                    {drawModeFormContent}
-                    <div className="mt-6 pb-4">{saveButtonContent}</div>
-                  </div>
-                </Drawer.Content>
-              </Drawer.Portal>
-            </Drawer.Root>
-          )}
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                修改
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>修改开奖方式</DialogTitle>
+                <DialogDescription>
+                  选择新的开奖方式并保存设置
+                </DialogDescription>
+              </DialogHeader>
+              {drawModeFormContent}
+              <DialogFooter>{saveButtonContent}</DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
 
         <Separator />
