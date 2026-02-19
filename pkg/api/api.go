@@ -36,6 +36,10 @@ type JoinRequest struct {
 	LastName  string `json:"last_name"`
 }
 
+type AddParticipantRequest struct {
+	UserID int64 `json:"user_id"`
+}
+
 type WeightRequest struct {
 	Weight int `json:"weight"`
 }
@@ -71,6 +75,7 @@ func SetupRoutes(app *fiber.App, svc *service.LotteryService) {
 
 	api.Put("/lottery/:id", h.tokenAuth, h.updateLottery)
 	api.Get("/lottery/:id/participants", h.tokenAuth, h.getParticipants)
+	api.Post("/lottery/:id/participants", h.tokenAuth, h.addParticipant)
 	api.Put("/lottery/:id/participants/:uid", h.tokenAuth, h.updateParticipantWeight)
 	api.Post("/lottery/:id/participants/:uid/prize_weight", h.tokenAuth, h.updatePrizeWeight)
 	api.Delete("/lottery/:id/participants/:uid/prize_weight/:prize_id", h.tokenAuth, h.deletePrizeWeight)
@@ -232,6 +237,38 @@ func (h *Handler) joinLottery(c fiber.Ctx) error {
 			return SendError(c, fiber.StatusConflict, ERR_CONFLICT, "User already joined")
 		default:
 			logger.Errorf("failed to join lottery %s: %v", id, err)
+			return SendInternalError(c)
+		}
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(participant)
+}
+
+func (h *Handler) addParticipant(c fiber.Ctx) error {
+	id := c.Params("id")
+
+	var req AddParticipantRequest
+	if err := c.Bind().Body(&req); err != nil {
+		return SendError(c, fiber.StatusBadRequest, ERR_BAD_REQUEST, "Invalid request body")
+	}
+
+	if req.UserID == 0 {
+		return SendError(c, fiber.StatusBadRequest, ERR_BAD_REQUEST, "User ID is required")
+	}
+
+	participant, err := h.service.AddParticipant(id, service.JoinInput{
+		UserID: req.UserID,
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrLotteryNotFound):
+			return SendError(c, fiber.StatusNotFound, ERR_NOT_FOUND, "Lottery not found")
+		case errors.Is(err, service.ErrLotteryEnded):
+			return SendError(c, fiber.StatusBadRequest, ERR_LOTTERY_ENDED, "Lottery already completed")
+		case errors.Is(err, service.ErrParticipantExists):
+			return SendError(c, fiber.StatusConflict, ERR_CONFLICT, "User already joined")
+		default:
+			logger.Errorf("failed to add participant locally lottery=%s: %v", id, err)
 			return SendInternalError(c)
 		}
 	}

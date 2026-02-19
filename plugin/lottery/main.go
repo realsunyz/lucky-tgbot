@@ -263,8 +263,8 @@ func sendWinnerNotification(ctx context.Context, b *bot.Bot, lottery *dbmodels.L
 
 	for userID, prizes := range userWins {
 		prizeText := strings.Join(prizes, ", ")
-		message := fmt.Sprintf("🎉 中奖通知\n\n恭喜您在抽奖活动 %s 中获奖! \n抽奖标题: %s\n获得奖品: %s\n\n请及时联系 <a href=\"tg://user?id=%d\">%s</a> 领取奖品",
-			lottery.Title, lottery.Title, prizeText, lottery.CreatorID, creatorName)
+		message := fmt.Sprintf("🎉 中奖通知\n\n恭喜您在抽奖活动 %s 中获奖\n获得奖品: %s\n\n请及时联系发起者 <a href=\"tg://user?id=%d\">%s</a> 领取奖品",
+			lottery.Title, prizeText, lottery.CreatorID, creatorName)
 		b.SendMessage(ctx, &bot.SendMessageParams{ChatID: userID, Text: message, ParseMode: tgmodels.ParseModeHTML})
 	}
 
@@ -272,7 +272,7 @@ func sendWinnerNotification(ctx context.Context, b *bot.Bot, lottery *dbmodels.L
 	for _, w := range winners {
 		winnerLines = append(winnerLines, fmt.Sprintf("- %d 获得了 \"%s\"", w.UserID, w.PrizeName))
 	}
-	creatorMessage := fmt.Sprintf("🎊 开奖已完成\n\n抽奖 ID: %s\n抽奖标题: %s\n中奖用户列表:\n%s\n\n更多详情请前往网页端查看:\n%s",
+	creatorMessage := fmt.Sprintf("🎊 开奖已完成\n\n抽奖 ID: <code>%s</code>\n抽奖标题: %s\n中奖用户列表:\n%s\n\n更多详情请前往网页端查看:\n%s",
 		lottery.ID, lottery.Title, strings.Join(winnerLines, "\n"), resultLink)
 	b.SendMessage(ctx, &bot.SendMessageParams{ChatID: lottery.CreatorID, Text: creatorMessage})
 }

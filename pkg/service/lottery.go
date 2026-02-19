@@ -339,6 +339,37 @@ func (s *LotteryService) JoinLottery(lotteryID string, input JoinInput) (*models
 	return lottery, participant, nil
 }
 
+func (s *LotteryService) AddParticipant(lotteryID string, input JoinInput) (*models.Participant, error) {
+	lottery, err := database.GetLottery(lotteryID)
+	if err != nil {
+		return nil, err
+	}
+	if lottery == nil {
+		return nil, ErrLotteryNotFound
+	}
+	if lottery.Status == "completed" {
+		return nil, ErrLotteryEnded
+	}
+
+	participant := &models.Participant{
+		LotteryID: lotteryID,
+		UserID:    input.UserID,
+		Username:  input.Username,
+		FirstName: input.FirstName,
+		LastName:  input.LastName,
+		Weight:    1,
+	}
+
+	if err := database.AddParticipant(participant); err != nil {
+		if errors.Is(err, database.ErrParticipantExists) {
+			return nil, ErrParticipantExists
+		}
+		return nil, err
+	}
+
+	return participant, nil
+}
+
 func (s *LotteryService) GetParticipants(lotteryID string) ([]models.Participant, error) {
 	return database.GetParticipants(lotteryID)
 }

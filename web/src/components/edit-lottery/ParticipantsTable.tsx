@@ -68,6 +68,7 @@ export function ParticipantsTable({
     useState<Participant | null>(null);
   const [weightEditingParticipant, setWeightEditingParticipant] =
     useState<Participant | null>(null);
+  const [isAddUserOpen, setIsAddUserOpen] = useState(false);
 
   const isMobile = useMediaQuery("(max-width: 640px)");
 
@@ -85,13 +86,28 @@ export function ParticipantsTable({
   return (
     <>
       <Card className="gap-4">
-        <CardHeader>
-          <CardTitle>参与者列表</CardTitle>
-          <CardDescription>
-            {isWeightsDisabled
-              ? "查看所有参与用户"
-              : "查看所有参与用户并修改权重"}
-          </CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <div className="space-y-1">
+            <CardTitle>参与者列表</CardTitle>
+            <CardDescription>
+              {isWeightsDisabled
+                ? "查看所有参与用户"
+                : "查看所有参与用户并修改权重"}
+            </CardDescription>
+          </div>
+          {!isWeightsDisabled && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsAddUserOpen(true)}
+              className="h-8 gap-1"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                添加用户
+              </span>
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           {participants.length === 0 ? (
@@ -280,6 +296,14 @@ export function ParticipantsTable({
           </Drawer.Portal>
         </Drawer.Root>
       )}
+
+      <AddParticipantDialog
+        open={isAddUserOpen}
+        onOpenChange={setIsAddUserOpen}
+        lotteryId={lotteryId}
+        token={token}
+        onSuccess={onDataUpdate}
+      />
     </>
   );
 }
@@ -577,5 +601,79 @@ function GlobalWeightRow({
         />
       </div>
     </div>
+  );
+}
+
+function AddParticipantDialog({
+  lotteryId,
+  token,
+  onSuccess,
+  open,
+  onOpenChange,
+}: {
+  lotteryId: string;
+  token: string;
+  onSuccess: () => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const [userId, setUserId] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userId) {
+      toast.error("请输入用户 ID");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await import("@/api/lottery").then((mod) =>
+        mod.addParticipant(lotteryId, token, {
+          user_id: parseInt(userId),
+        }),
+      );
+      toast.success("已添加参与者");
+      onSuccess();
+      onOpenChange(false);
+      setUserId("");
+    } catch (e) {
+      toast.error(getErrorMessage(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>添加参与者</DialogTitle>
+          <DialogDescription>手动添加用户到抽奖列表</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <label htmlFor="user_id" className="text-right text-sm font-medium">
+              User ID
+            </label>
+            <Input
+              id="user_id"
+              type="number"
+              value={userId}
+              onChange={(e) => setUserId(e.target.value)}
+              className="col-span-3"
+              required
+              placeholder="12345678"
+            />
+          </div>
+          <div className="flex justify-end pt-4">
+            <Button type="submit" disabled={loading}>
+              {loading ? "添加中..." : "确认添加"}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

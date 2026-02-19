@@ -165,6 +165,29 @@ export async function joinLottery(
   return res.json();
 }
 
+// Add participant manually (Admin)
+export async function addParticipant(
+  id: string,
+  token: string,
+  userData: {
+    user_id: number;
+  },
+): Promise<Participant> {
+  const res = await fetch(
+    `${API_BASE}/api/lottery/${id}/participants?token=${token}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(userData),
+    },
+  );
+  if (!res.ok) {
+    const error = await res.json();
+    throw error;
+  }
+  return res.json();
+}
+
 // Get participants (requires token)
 export async function getParticipants(
   id: string,

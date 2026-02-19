@@ -6,7 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Checkbox,
+  CheckboxIndicator,
+} from "@/components/animate-ui/primitives/radix/checkbox";
 import {
   Card,
   CardContent,
@@ -614,15 +617,20 @@ export default function CreateLotteryPage() {
                       onCheckedChange={(checked) =>
                         setIsWeightsDisabled(checked as boolean)
                       }
-                      className="mt-1"
-                    />
+                      className={cn(
+                        "peer border-input dark:bg-input/30 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground dark:data-[state=checked]:bg-primary data-[state=checked]:border-primary focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive size-4 shrink-0 rounded-[4px] border shadow-xs transition-shadow outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center",
+                        "mt-1",
+                      )}
+                    >
+                      <CheckboxIndicator className="size-3.5 text-current" />
+                    </Checkbox>
                     <Label
                       htmlFor="weights-disabled"
                       className="cursor-pointer font-normal grid gap-1.5"
                     >
-                      <span className="font-semibold">禁用权重功能</span>
+                      <span className="font-semibold">公平抽奖</span>
                       <span className="text-sm text-muted-foreground">
-                        勾选后，后台管理页面将隐藏权重设置入口
+                        勾选后, 所有娱乐功能都将被禁用
                       </span>
                     </Label>
                   </div>
@@ -637,7 +645,10 @@ export default function CreateLotteryPage() {
                     onCheckedChange={(checked) =>
                       setIsTosAgreed(checked as boolean)
                     }
-                  />
+                    className="peer border-input dark:bg-input/30 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground dark:data-[state=checked]:bg-primary data-[state=checked]:border-primary focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive size-4 shrink-0 rounded-[4px] border shadow-xs transition-shadow outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center"
+                  >
+                    <CheckboxIndicator className="size-3.5 text-current" />
+                  </Checkbox>
                   <label
                     htmlFor="tos"
                     className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
