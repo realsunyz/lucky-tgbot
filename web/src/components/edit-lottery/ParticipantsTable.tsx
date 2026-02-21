@@ -39,6 +39,7 @@ import {
   updateParticipantWeight,
   updatePrizeWeight,
   deletePrizeWeight,
+  addParticipant,
 } from "@/api/lottery";
 import { getErrorMessage } from "@/utils/errors";
 
@@ -605,11 +606,9 @@ function AddParticipantDialog({
 
     setLoading(true);
     try {
-      await import("@/api/lottery").then((mod) =>
-        mod.addParticipant(lotteryId, token, {
-          user_id: parseInt(userId),
-        }),
-      );
+      await addParticipant(lotteryId, token, {
+        user_id: parseInt(userId),
+      });
       toast.success("已添加参与者");
       onSuccess();
       onOpenChange(false);
