@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -464,7 +464,7 @@ function PrizeWeightRow({
         w,
         token,
       );
-      toast.success("奖品权重已更新");
+      toast.success("奖品权重更新成功");
       onUpdate();
     } catch (e) {
       toast.error(getErrorMessage(e));
@@ -609,7 +609,7 @@ function AddParticipantDialog({
       await addParticipant(lotteryId, token, {
         user_id: parseInt(userId),
       });
-      toast.success("已添加参与者");
+      toast.success("参与者添加成功");
       onSuccess();
       onOpenChange(false);
       setUserId("");

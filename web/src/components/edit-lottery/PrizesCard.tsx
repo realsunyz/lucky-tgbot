@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import {
   Card,
   CardAction,
@@ -94,7 +94,7 @@ export function PrizesCard({
         prizes: currentPrizes,
       });
 
-      toast.success("奖品已添加");
+      toast.success("奖品添加成功");
       await onUpdate();
       setIsDialogOpen(false);
     } catch (err) {
@@ -118,7 +118,7 @@ export function PrizesCard({
       return;
     }
     if (updatedPrize.quantity < 1) {
-      toast.error("数量必须大于 0");
+      toast.error("奖品数量必须大于 0");
       return;
     }
     if (updatedPrize.quantity > 20) {
@@ -163,7 +163,7 @@ export function PrizesCard({
       await updateLottery(lotteryId, token, {
         prizes: newPrizes,
       });
-      toast.success("奖品已删除");
+      toast.success("奖品删除成功");
       await onUpdate();
     } catch (err) {
       toast.error(getErrorMessage(err));
@@ -497,7 +497,7 @@ function InlineNumberEdit({
       onSave(num);
     } else {
       if (num > 20) {
-        toast.error("数量不能超过 20");
+        toast.error("奖品数量不能超过 20");
       }
       setCurrentValue(value.toString());
     }

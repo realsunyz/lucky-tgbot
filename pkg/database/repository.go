@@ -251,3 +251,9 @@ func GenerateLotteryID() (string, error) {
 	}
 	return "", fmt.Errorf("failed to generate unique lottery ID")
 }
+
+func DeleteLottery(id string) error {
+	db := GetDB()
+	_, err := db.Exec(`DELETE FROM lotteries WHERE id = ?`, id)
+	return err
+}

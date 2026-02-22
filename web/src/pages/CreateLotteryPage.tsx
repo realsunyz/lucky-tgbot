@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ErrorDisplay } from "@/components/ui/error-display";
+import { LoadingDisplay } from "@/components/ui/loading-display";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -26,17 +28,14 @@ import {
   type Prize as PrizeType,
 } from "@/api/lottery";
 import { cn } from "@/lib/utils";
-import {
-  AlertCircle,
-  Hash,
-  Loader2,
-  Plus,
-  Trash2,
-  TriangleAlert,
-  UserRoundPlus,
-} from "lucide-react";
+import { AlertCircle, Hash, Plus, Trash2, UserRoundPlus } from "lucide-react";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
-import { getErrorMessage } from "@/utils/errors";
+import {
+  getErrorMessage,
+  VALIDATION_ERRORS,
+  UI_MESSAGES,
+  SUCCESS_MESSAGES,
+} from "@/utils/errors";
 
 interface PrizeInput {
   name: string;
@@ -133,7 +132,7 @@ export default function CreateLotteryPage() {
 
   const addPrize = () => {
     if (prizes.length >= MAX_PRIZES_COUNT) {
-      toast.error(`最多添加 ${MAX_PRIZES_COUNT} 个奖品`);
+      toast.error(VALIDATION_ERRORS.PRIZE_COUNT_EXCEED(MAX_PRIZES_COUNT));
       return;
     }
     setPrizes([...prizes, { name: "", quantity: 1 }]);
@@ -164,69 +163,74 @@ export default function CreateLotteryPage() {
     setErrorMsg(null);
 
     if (!id || !creatorId) {
-      setErrorMsg("无效的创建链接");
+      setErrorMsg(VALIDATION_ERRORS.INVALID_CREATE_LINK);
       return;
     }
 
     if (!title.trim()) {
-      setErrorMsg("请填写抽奖名称");
+      setErrorMsg(VALIDATION_ERRORS.TITLE_REQUIRED);
       return;
     }
     if (title.length > MAX_TITLE_LENGTH) {
-      setErrorMsg(`抽奖标题不得超过 ${MAX_TITLE_LENGTH} 字`);
+      setErrorMsg(VALIDATION_ERRORS.TITLE_TOO_LONG(MAX_TITLE_LENGTH));
       return;
     }
 
     if (description.length > MAX_DESC_LENGTH) {
-      setErrorMsg(`抽奖详情不得超过 ${MAX_DESC_LENGTH} 字`);
+      setErrorMsg(VALIDATION_ERRORS.DESC_TOO_LONG(MAX_DESC_LENGTH));
       return;
     }
 
     if (prizes.some((p) => !p.name.trim())) {
-      setErrorMsg("请填写奖品名称");
+      setErrorMsg(VALIDATION_ERRORS.PRIZE_NAME_REQUIRED);
       return;
     }
     if (prizes.some((p) => p.name.length > MAX_PRIZE_NAME_LENGTH)) {
-      setErrorMsg(`奖品名称不得超过 ${MAX_PRIZE_NAME_LENGTH} 字`);
+      setErrorMsg(
+        VALIDATION_ERRORS.PRIZE_TITLE_TOO_LONG(MAX_PRIZE_NAME_LENGTH),
+      );
       return;
     }
     if (prizes.some((p) => p.quantity < 1 || p.quantity > MAX_PRIZE_QUANTITY)) {
-      setErrorMsg(`奖品数量不得超过 ${MAX_PRIZE_QUANTITY} 个`);
+      setErrorMsg(VALIDATION_ERRORS.PRIZE_QTY_EXCEED(MAX_PRIZE_QUANTITY));
       return;
     }
 
     if (drawMode === "timed") {
-      if (!date) {
-        setErrorMsg("请选择开奖时间");
+      if (!date || isNaN(date.getTime())) {
+        setErrorMsg(VALIDATION_ERRORS.DRAW_TIME_REQUIRED);
         return;
       }
       const now = new Date();
       if (date <= now) {
-        setErrorMsg("开奖时间不得早于当前时间");
+        setErrorMsg(VALIDATION_ERRORS.DRAW_TIME_PAST);
         return;
       }
 
       const maxDate = new Date();
       maxDate.setDate(now.getDate() + MAX_PRIZES_DURATION);
       if (date > maxDate) {
-        setErrorMsg(`开奖时间不得晚于 ${MAX_PRIZES_DURATION} 天后`);
+        setErrorMsg(
+          VALIDATION_ERRORS.DRAW_TIME_FUTURE_LIMIT(MAX_PRIZES_DURATION),
+        );
         return;
       }
     }
 
     if (drawMode === "full") {
-      if (!maxEntries || parseInt(maxEntries) < 1) {
-        setErrorMsg("无效的满人数量");
+      const parsedEntries = parseInt(maxEntries, 10);
+      if (!maxEntries || isNaN(parsedEntries) || parsedEntries < 1) {
+        setErrorMsg(VALIDATION_ERRORS.ENTRIES_INVALID);
         return;
       }
-      if (parseInt(maxEntries) > MAX_PRIZES_PARTICIPANTS) {
-        setErrorMsg(`最高人数不得超过 ${MAX_PRIZES_PARTICIPANTS} 人`);
+      if (parsedEntries > MAX_PRIZES_PARTICIPANTS) {
+        setErrorMsg(VALIDATION_ERRORS.ENTRIES_EXCEED(MAX_PRIZES_PARTICIPANTS));
         return;
       }
     }
 
     if (!isTosAgreed) {
-      setErrorMsg("请阅读并同意服务条款");
+      setErrorMsg(VALIDATION_ERRORS.TOS_REQUIRED);
       return;
     }
 
@@ -247,13 +251,13 @@ export default function CreateLotteryPage() {
         description: description.trim(),
         draw_mode: drawMode,
         draw_time: drawTimeISO,
-        max_entries: drawMode === "full" ? parseInt(maxEntries) : undefined,
+        max_entries: drawMode === "full" ? parseInt(maxEntries, 10) : undefined,
         prizes: validPrizes,
         creator_id: creatorId,
         is_weights_disabled: isWeightsDisabled,
       });
 
-      toast.success("抽奖创建成功！");
+      toast.success(SUCCESS_MESSAGES.CREATE_SUCCESS);
       navigate(`/lottery/${id}`);
     } catch (error) {
       setErrorMsg(getErrorMessage(error));
@@ -263,36 +267,24 @@ export default function CreateLotteryPage() {
   };
 
   if (isLoadingLottery) {
-    return (
-      <div className="h-full flex items-center justify-center bg-background p-4">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+    return <LoadingDisplay />;
   }
 
   if (!id || !creatorId) {
     return (
-      <div className="h-full w-full flex items-center justify-center bg-background p-4">
-        <Alert variant="destructive" className="w-full max-w-md">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>无效链接</AlertTitle>
-          <AlertDescription>
-            请从 Telegram Bot 获取有效的创建链接或确保抽奖 ID 正确
-          </AlertDescription>
-        </Alert>
-      </div>
+      <ErrorDisplay
+        title={UI_MESSAGES.LOAD_FAILED_TITLE}
+        description={UI_MESSAGES.INVALID_LOTTERY_ID}
+      />
     );
   }
 
   if (isNotDraft) {
     return (
-      <div className="h-full w-full flex items-center justify-center bg-background p-4">
-        <Alert className="w-full max-w-md border-yellow-500/50 text-yellow-600 dark:text-yellow-500 [&>svg]:text-yellow-600 dark:[&>svg]:text-yellow-500">
-          <TriangleAlert className="h-4 w-4" />
-          <AlertTitle>无法编辑</AlertTitle>
-          <AlertDescription>该抽奖已创建，无法再次编辑</AlertDescription>
-        </Alert>
-      </div>
+      <ErrorDisplay
+        title={UI_MESSAGES.LOAD_FAILED_TITLE}
+        description={UI_MESSAGES.INVALID_LOTTERY_ID}
+      />
     );
   }
 
@@ -414,8 +406,8 @@ export default function CreateLotteryPage() {
                 </CardHeader>
                 <CardContent className="space-y-4 pt-0">
                   {prizes.map((prize, index) => (
-                    <div key={index} className="flex gap-4 items-start">
-                      <div className="flex-1 space-y-1">
+                    <div key={index} className="flex gap-4 items-end">
+                      <div className="flex-1 space-y-1.5">
                         <div className="flex justify-between">
                           <Label className="text-xs text-muted-foreground">
                             奖品名称
@@ -462,18 +454,16 @@ export default function CreateLotteryPage() {
                         />
                       </div>
                       {prizes.length > 1 && (
-                        <div className="pt-7">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removePrize(index)}
-                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-9 w-9"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            <span className="sr-only">删除</span>
-                          </Button>
-                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removePrize(index)}
+                          className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-10 w-10 shrink-0"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <span className="sr-only">删除</span>
+                        </Button>
                       )}
                     </div>
                   ))}

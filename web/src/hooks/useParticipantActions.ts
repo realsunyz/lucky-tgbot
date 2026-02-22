@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { getErrorMessage } from "@/utils/errors";
 import {
   updateParticipantWeight,
@@ -16,6 +16,7 @@ interface UseParticipantActionsOptions {
   prizes: Prize[];
   onDataUpdate: () => Promise<void>;
   onParticipantRemoved: (userId: number) => void;
+  onDrawSuccess?: () => void;
 }
 
 export function useParticipantActions({
@@ -24,6 +25,7 @@ export function useParticipantActions({
   prizes,
   onDataUpdate,
   onParticipantRemoved,
+  onDrawSuccess,
 }: UseParticipantActionsOptions) {
   const [isSavingWeight, setIsSavingWeight] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -60,7 +62,7 @@ export function useParticipantActions({
       }
 
       await onDataUpdate();
-      toast.success("权重已更新");
+      toast.success("权重更新成功");
       return true;
     } catch (err) {
       toast.error(getErrorMessage(err));
@@ -76,7 +78,7 @@ export function useParticipantActions({
     try {
       await removeParticipant(id, participant.user_id, token);
       onParticipantRemoved(participant.user_id);
-      toast.success("已移除参与者");
+      toast.success("参与者移除成功");
     } catch (err) {
       toast.error(getErrorMessage(err));
     }
@@ -87,9 +89,14 @@ export function useParticipantActions({
 
     setIsDrawing(true);
     try {
-      const result = await drawLottery(id, token);
-      toast.success(`开奖成功！共 ${result.winners?.length || 0} 人中奖`);
-      await onDataUpdate();
+      await drawLottery(id, token);
+      toast.success("开奖成功");
+
+      if (onDrawSuccess) {
+        onDrawSuccess();
+      } else {
+        await onDataUpdate();
+      }
       return true;
     } catch (err) {
       toast.error(getErrorMessage(err));

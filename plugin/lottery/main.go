@@ -64,7 +64,7 @@ func HandleLotteryCommand(ctx context.Context, b *bot.Bot, update *tgmodels.Upda
 		logger.Errorf("failed to create draft lottery: %v", err)
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
-			Text:   "❌ 创建抽奖失败，请稍后重试",
+			Text:   "❌ 创建抽奖失败, 请稍后重试",
 		})
 		return
 	}
@@ -125,12 +125,80 @@ func HandleEditCommand(ctx context.Context, b *bot.Bot, update *tgmodels.Update)
 		return
 	}
 
+	if lottery.Status == "draft" {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   "❌ 该抽奖尚未发布",
+		})
+		return
+	}
+
+	if lottery.Status == "completed" {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   "❌ 该抽奖已结束",
+		})
+		return
+	}
+
 	editLink := fmt.Sprintf("%s/edit/%s?token=%s", getWebDomain(), lotteryID, token)
 	message := fmt.Sprintf("✏️ 编辑抽奖\n\n抽奖 ID: <code>%s</code>\n标题: %s\n\n编辑链接有效期 1 小时:\n%s", lotteryID, lottery.Title, editLink)
 
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
 		Text:      message,
+		ParseMode: tgmodels.ParseModeHTML,
+	})
+}
+
+func HandleDeleteCommand(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
+	if lotteryService == nil {
+		logger.Errorf("lottery service is not initialized")
+		return
+	}
+
+	if update.Message == nil {
+		return
+	}
+
+	if update.Message.Chat.Type != "private" {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   "❌ 请在私聊中使用此命令",
+		})
+		return
+	}
+
+	text := strings.TrimSpace(update.Message.Text)
+	parts := strings.Fields(text)
+	if len(parts) < 2 {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID:    update.Message.Chat.ID,
+			Text:      "❌ 请提供抽奖 ID\n\n用法: <code>/delete 123456</code>",
+			ParseMode: tgmodels.ParseModeHTML,
+		})
+		return
+	}
+
+	lotteryID := parts[1]
+	err := lotteryService.DeleteLottery(lotteryID, update.Message.From.ID)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrLotteryNotFound):
+			b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: "❌ 未找到该抽奖"})
+		case errors.Is(err, service.ErrPermissionDenied):
+			b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: "❌ 您不是该抽奖的创建者"})
+		case errors.Is(err, service.ErrLotteryCannotDelete):
+			b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: "❌ 只有处于草稿或进行中的抽奖可以被删除"})
+		default:
+			b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: "❌ 删除抽奖失败, 请稍后重试"})
+		}
+		return
+	}
+
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:    update.Message.Chat.ID,
+		Text:      fmt.Sprintf("🗑 抽奖 <code>%s</code> 已成功删除", lotteryID),
 		ParseMode: tgmodels.ParseModeHTML,
 	})
 }
@@ -145,7 +213,7 @@ func HandleStartCommand(ctx context.Context, b *bot.Bot, update *tgmodels.Update
 	if len(parts) < 2 {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
-			Text:   "👋🏻 Hi there!",
+			Text:   "Hi there!",
 		})
 		return
 	}
@@ -174,7 +242,7 @@ func handleJoin(ctx context.Context, b *bot.Bot, update *tgmodels.Update, lotter
 		case errors.Is(err, service.ErrLotteryNotFound):
 			b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: "❌ 找不到该抽奖"})
 		case errors.Is(err, service.ErrLotteryNotActive):
-			msg := "❌ 该抽奖未开始"
+			msg := "❌ 无效的抽奖 ID, 请稍后再试"
 			if lottery != nil {
 				switch lottery.Status {
 				case "completed":
@@ -194,7 +262,7 @@ func handleJoin(ctx context.Context, b *bot.Bot, update *tgmodels.Update, lotter
 			})
 		default:
 			logger.Errorf("failed to join lottery %s: %v", lotteryID, err)
-			b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: "❌ 参与失败，请稍后重试"})
+			b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: "❌ 参与失败, 请稍后重试"})
 		}
 		return
 	}
@@ -274,5 +342,9 @@ func sendWinnerNotification(ctx context.Context, b *bot.Bot, lottery *dbmodels.L
 	}
 	creatorMessage := fmt.Sprintf("🎊 开奖已完成\n\n抽奖 ID: <code>%s</code>\n抽奖标题: %s\n中奖用户列表:\n%s\n\n更多详情请前往网页端查看:\n%s",
 		lottery.ID, lottery.Title, strings.Join(winnerLines, "\n"), resultLink)
-	b.SendMessage(ctx, &bot.SendMessageParams{ChatID: lottery.CreatorID, Text: creatorMessage})
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:    lottery.CreatorID,
+		Text:      creatorMessage,
+		ParseMode: tgmodels.ParseModeHTML,
+	})
 }

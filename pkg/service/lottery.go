@@ -15,15 +15,16 @@ import (
 )
 
 var (
-	ErrLotteryNotFound   = errors.New("lottery not found")
-	ErrLotteryConflict   = errors.New("lottery already exists")
-	ErrLotteryEnded      = errors.New("lottery already completed")
-	ErrLotteryNotActive  = errors.New("lottery is not active")
-	ErrLotteryFull       = errors.New("lottery is full")
-	ErrLotteryNotDrawn   = errors.New("lottery not yet drawn")
-	ErrTokenInvalid      = errors.New("invalid or expired token")
-	ErrPermissionDenied  = errors.New("permission denied")
-	ErrParticipantExists = errors.New("participant already exists")
+	ErrLotteryNotFound     = errors.New("lottery not found")
+	ErrLotteryConflict     = errors.New("lottery already exists")
+	ErrLotteryEnded        = errors.New("lottery already completed")
+	ErrLotteryNotActive    = errors.New("lottery is not active")
+	ErrLotteryFull         = errors.New("lottery is full")
+	ErrLotteryNotDrawn     = errors.New("lottery not yet drawn")
+	ErrTokenInvalid        = errors.New("invalid or expired token")
+	ErrPermissionDenied    = errors.New("permission denied")
+	ErrParticipantExists   = errors.New("participant already exists")
+	ErrLotteryCannotDelete = errors.New("cannot delete lottery in current state")
 )
 
 type Notifier interface {
@@ -128,6 +129,24 @@ func (s *LotteryService) GetLotterySnapshot(id string) (*LotterySnapshot, error)
 	}
 
 	return snapshot, nil
+}
+
+func (s *LotteryService) DeleteLottery(lotteryID string, userID int64) error {
+	lottery, err := database.GetLottery(lotteryID)
+	if err != nil {
+		return err
+	}
+	if lottery == nil {
+		return ErrLotteryNotFound
+	}
+	if lottery.CreatorID != userID {
+		return ErrPermissionDenied
+	}
+	if lottery.Status != "draft" && lottery.Status != "active" {
+		return ErrLotteryCannotDelete
+	}
+
+	return database.DeleteLottery(lotteryID)
 }
 
 func (s *LotteryService) GetResults(id string) (*models.Lottery, []models.Prize, []models.Winner, error) {

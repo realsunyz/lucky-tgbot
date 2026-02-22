@@ -10,10 +10,38 @@ export const ERROR_MESSAGES: Record<string, string> = {
   ERR_TOKEN_INVALID: "编辑令牌无效或已过期",
 };
 
+export const VALIDATION_ERRORS = {
+  INVALID_CREATE_LINK: "无效的创建链接",
+  TITLE_REQUIRED: "请填写抽奖名称",
+  PRIZE_NAME_REQUIRED: "请填写奖品名称",
+  DRAW_TIME_REQUIRED: "请选择开奖时间",
+  DRAW_TIME_PAST: "开奖时间不得早于当前时间",
+  ENTRIES_INVALID: "无效的满人数量",
+  TOS_REQUIRED: "请阅读并同意服务条款",
+  TITLE_TOO_LONG: (max: number) => `抽奖标题不得超过 ${max} 字`,
+  DESC_TOO_LONG: (max: number) => `抽奖详情不得超过 ${max} 字`,
+  PRIZE_TITLE_TOO_LONG: (max: number) => `奖品名称不得超过 ${max} 字`,
+  PRIZE_QTY_EXCEED: (max: number) => `奖品数量不得超过 ${max} 个`,
+  PRIZE_COUNT_EXCEED: (max: number) => `最多添加 ${max} 个奖品`,
+  DRAW_TIME_FUTURE_LIMIT: (days: number) => `开奖时间不得晚于 ${days} 天后`,
+  ENTRIES_EXCEED: (max: number) => `最高人数不得超过 ${max} 人`,
+};
+
+export const UI_MESSAGES = {
+  LOAD_FAILED_TITLE: "加载失败",
+  INVALID_EDIT_TOKEN: "无效的编辑令牌",
+  INVALID_LOTTERY_ID: "无效的抽奖 ID",
+  NOT_PUBLISHED_TITLE: "抽奖未发布",
+  NOT_PUBLISHED_WAIT_DESC: "请等待创建者发布该抽奖",
+};
+
+export const SUCCESS_MESSAGES = {
+  CREATE_SUCCESS: "抽奖创建成功",
+};
+
 export function getErrorMessage(error: any): string {
   if (error?.code && ERROR_MESSAGES[error.code]) {
     return ERROR_MESSAGES[error.code];
   }
-  // Fallback to error message from backend if available, or default
   return error?.message || "发生未知错误";
 }

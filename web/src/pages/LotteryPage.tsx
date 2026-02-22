@@ -11,7 +11,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getLottery, type LotteryResponse } from "@/api/lottery";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Trophy,
   Gift,
@@ -19,11 +18,11 @@ import {
   Hash,
   UserRoundPlus,
   ListCollapse,
-  AlertCircle,
-  TriangleAlert,
   BadgeCheck,
 } from "lucide-react";
-import { getErrorMessage } from "@/utils/errors";
+import { getErrorMessage, UI_MESSAGES } from "@/utils/errors";
+import { ErrorDisplay } from "@/components/ui/error-display";
+import { LoadingDisplay } from "@/components/ui/loading-display";
 
 function isAbortError(err: unknown) {
   return (
@@ -66,39 +65,25 @@ export default function LotteryPage() {
   }, [id]);
 
   if (loading) {
-    return (
-      <div className="h-full w-full flex items-center justify-center bg-background">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="text-muted-foreground">加载中...</p>
-        </div>
-      </div>
-    );
+    return <LoadingDisplay />;
   }
 
   if (error || !lottery) {
     return (
-      <div className="h-full w-full flex items-center justify-center bg-background p-4">
-        <Alert variant="destructive" className="w-full max-w-md">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>加载失败</AlertTitle>
-          <AlertDescription>{error || "未找到该抽奖"}</AlertDescription>
-        </Alert>
-      </div>
+      <ErrorDisplay
+        title={UI_MESSAGES.LOAD_FAILED_TITLE}
+        description={UI_MESSAGES.INVALID_LOTTERY_ID}
+      />
     );
   }
 
   if (lottery.status === "draft") {
     return (
-      <div className="h-full w-full flex items-center justify-center bg-background p-4">
-        <Alert className="w-full max-w-md border-yellow-500/50 text-yellow-600 dark:text-yellow-500 [&>svg]:text-yellow-600 dark:[&>svg]:text-yellow-500">
-          <TriangleAlert className="h-4 w-4" />
-          <AlertTitle>抽奖未发布</AlertTitle>
-          <AlertDescription>
-            该抽奖处于草稿状态，尚未发布。请联系发布者完成创建。
-          </AlertDescription>
-        </Alert>
-      </div>
+      <ErrorDisplay
+        variant="warning"
+        title={UI_MESSAGES.NOT_PUBLISHED_TITLE}
+        description={UI_MESSAGES.NOT_PUBLISHED_WAIT_DESC}
+      />
     );
   }
 
@@ -106,24 +91,31 @@ export default function LotteryPage() {
     switch (status) {
       case "draft":
         return (
-          <Badge className="bg-slate-500 hover:bg-slate-600 text-white">
+          <Badge className="bg-slate-500 hover:bg-slate-600 text-white px-3 py-0 h-[28px] font-normal text-sm border-transparent rounded-full">
             草稿
           </Badge>
         );
       case "active":
         return (
-          <Badge className="bg-green-600 hover:bg-green-700 text-white">
+          <Badge className="bg-green-600 hover:bg-green-700 text-white px-3 py-0 h-[28px] font-normal text-sm border-transparent rounded-full">
             进行中
           </Badge>
         );
       case "completed":
         return (
-          <Badge className="bg-slate-500 hover:bg-slate-600 text-white">
+          <Badge className="bg-slate-500 hover:bg-slate-600 text-white px-3 py-0 h-[28px] font-normal text-sm border-transparent rounded-full">
             已开奖
           </Badge>
         );
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return (
+          <Badge
+            variant="outline"
+            className="px-3 py-0 h-[28px] font-normal text-sm rounded-full"
+          >
+            {status}
+          </Badge>
+        );
     }
   };
 
@@ -177,9 +169,6 @@ export default function LotteryPage() {
         <div className="text-center sm:text-left space-y-2">
           <div className="flex flex-col sm:flex-row items-center sm:items-baseline gap-3 justify-center sm:justify-start">
             <h1 className="text-3xl font-bold">{lottery.title}</h1>
-            <div className="hidden sm:block">
-              {getStatusBadge(lottery.status)}
-            </div>
           </div>
           <div className="text-muted-foreground flex flex-wrap gap-4 sm:gap-6 justify-center items-center sm:justify-start text-sm">
             <span className="flex items-center gap-1.5">
@@ -212,7 +201,7 @@ export default function LotteryPage() {
                   <div className="flex items-center gap-2">
                     <ListCollapse className="w-5 h-5" /> 抽奖详情
                   </div>
-                  <div className="sm:hidden flex items-center">
+                  <div className="flex items-center">
                     {getStatusBadge(lottery.status)}
                   </div>
                 </CardTitle>
@@ -239,7 +228,7 @@ export default function LotteryPage() {
                   {lottery.prizes.map((prize, index) => (
                     <div
                       key={prize.id || index}
-                      className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors shadow-sm"
+                      className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors"
                     >
                       <span className="font-medium">{prize.name}</span>
                       <Badge
@@ -262,17 +251,17 @@ export default function LotteryPage() {
                     <Trophy className="w-5 h-5 text-yellow-500" /> 中奖者列表
                   </CardTitle>
                   <div
-                    className={`flex items-center gap-2 text-xs sm:text-sm px-3 py-1.5 rounded-full transition-colors ${getWinRateStyles()}`}
+                    className={`flex items-center gap-2 px-3 py-0 h-[28px] rounded-full transition-colors font-normal text-sm border border-transparent shrink-0 ${getWinRateStyles()}`}
                   >
                     <span className="hidden sm:inline">
                       参与人数: {participantCount}
                     </span>
                     <span className="hidden sm:inline w-px h-3 bg-current opacity-50" />
                     <span className="sm:hidden">
-                      预计中奖率: {getWinRateText()}
+                      综合中奖率: {getWinRateText()}
                     </span>
                     <span className="hidden sm:inline">
-                      预计中奖率: {getWinRateText()}
+                      综合中奖率: {getWinRateText()}
                     </span>
                   </div>
                 </div>
@@ -311,8 +300,8 @@ export default function LotteryPage() {
                           className="text-center py-12 text-muted-foreground"
                         >
                           {lottery.status === "completed"
-                            ? "本期抽奖暂无中奖记录"
-                            : "尚未开奖，敬请期待"}
+                            ? "暂无中奖记录"
+                            : "尚未开奖, 敬请期待"}
                         </TableCell>
                       </TableRow>
                     )}

@@ -47,6 +47,10 @@ func main() {
 				lottery.HandleEditCommand(ctx, b, update)
 				return
 			}
+			if strings.HasPrefix(inputText, "/delete") {
+				lottery.HandleDeleteCommand(ctx, b, update)
+				return
+			}
 			if strings.HasPrefix(inputText, "/start") {
 				lottery.HandleStartCommand(ctx, b, update)
 				return
