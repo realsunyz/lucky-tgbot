@@ -267,46 +267,43 @@ export default function LotteryPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>User ID</TableHead>
-                      <TableHead className="text-right">获得奖品</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {lottery.status === "completed" &&
-                    lottery.winners &&
-                    lottery.winners.length > 0 ? (
-                      lottery.winners.map((winner) => (
-                        <TableRow key={winner.id}>
-                          <TableCell className="font-mono text-muted-foreground">
-                            {winner.user_id}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Badge
-                              variant="outline"
-                              className="bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800"
-                            >
+                <div className="rounded-md overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>User ID</TableHead>
+                        <TableHead className="text-right">获得奖品</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {lottery.status === "completed" &&
+                      lottery.winners &&
+                      lottery.winners.length > 0 ? (
+                        lottery.winners.map((winner) => (
+                          <TableRow key={winner.id}>
+                            <TableCell className="font-mono text-muted-foreground">
+                              {winner.user_id}
+                            </TableCell>
+                            <TableCell className="text-right font-medium">
                               {winner.prize_name}
-                            </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell
+                            colSpan={2}
+                            className="text-center py-12 text-muted-foreground"
+                          >
+                            {lottery.status === "completed"
+                              ? "暂无中奖记录"
+                              : "尚未开奖, 敬请期待"}
                           </TableCell>
                         </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell
-                          colSpan={2}
-                          className="text-center py-12 text-muted-foreground"
-                        >
-                          {lottery.status === "completed"
-                            ? "暂无中奖记录"
-                            : "尚未开奖, 敬请期待"}
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
             </Card>
           </div>
