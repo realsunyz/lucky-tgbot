@@ -194,7 +194,6 @@ export function PrizesCard({
           </CardAction>
         </CardHeader>
         <CardContent>
-          {/* Desktop Table */}
           <div className="hidden sm:block rounded-md border overflow-hidden">
             <Table>
               <TableHeader>
@@ -270,7 +269,6 @@ export function PrizesCard({
             </Table>
           </div>
 
-          {/* Mobile Cards */}
           <div className="sm:hidden space-y-2">
             {(lottery.prizes || []).map((prize, index) => (
               <div
@@ -332,7 +330,6 @@ export function PrizesCard({
         </CardContent>
       </Card>
 
-      {/* Add Prize Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -394,8 +391,6 @@ export function PrizesCard({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Delete Confirmation Alert Dialog */}
     </>
   );
 }

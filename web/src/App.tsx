@@ -4,6 +4,7 @@ import CreateLotteryPage from "@/pages/CreateLotteryPage";
 import LotteryPage from "@/pages/LotteryPage";
 import EditLotteryPage from "@/pages/EditLotteryPage";
 import TosPage from "@/pages/TosPage";
+import StatusPage from "@/pages/StatusPage";
 
 import { ThemeProvider } from "@/components/theme-provider";
 import Layout from "@/components/layout";
@@ -18,6 +19,7 @@ function App() {
             <Route path="/lottery/:id" element={<LotteryPage />} />
             <Route path="/edit/:id" element={<EditLotteryPage />} />
             <Route path="/tos" element={<TosPage />} />
+            <Route path="/status" element={<StatusPage />} />
             <Route
               path="/"
               element={

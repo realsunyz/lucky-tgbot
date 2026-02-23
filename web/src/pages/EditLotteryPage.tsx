@@ -71,7 +71,6 @@ export default function EditLotteryPage() {
   return (
     <div className="py-8 px-4 flex justify-center w-full">
       <div className="w-full max-w-6xl space-y-6">
-        {/* Header */}
         <div className="text-center sm:text-left space-y-2">
           <div className="flex flex-col sm:flex-row items-center sm:items-baseline gap-3 justify-center sm:justify-between w-full">
             <h1 className="text-3xl font-bold">{lottery.title}</h1>
@@ -101,9 +100,7 @@ export default function EditLotteryPage() {
           </div>
         </div>
 
-        {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-          {/* Left Column: Actions */}
           <div className="space-y-6">
             <DrawActions
               lottery={lottery}
@@ -116,7 +113,6 @@ export default function EditLotteryPage() {
             />
           </div>
 
-          {/* Right Column: Participants */}
           <div className="lg:col-span-2 space-y-6">
             <PrizesCard
               lottery={lottery}

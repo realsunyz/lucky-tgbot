@@ -5,7 +5,6 @@ export function EditLotterySkeleton() {
   return (
     <div className="py-8 px-4 flex justify-center w-full">
       <div className="w-full max-w-6xl space-y-6">
-        {/* Header skeleton */}
         <div className="text-center sm:text-left space-y-2">
           <div className="flex flex-col sm:flex-row items-center sm:items-baseline gap-3 justify-center sm:justify-start">
             <Skeleton className="h-9 w-48" />
@@ -19,7 +18,6 @@ export function EditLotterySkeleton() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:gap-8">
-          {/* Left Column */}
           <div className="space-y-6">
             <Card className="gap-2">
               <CardHeader>
@@ -48,7 +46,6 @@ export function EditLotterySkeleton() {
             </Card>
           </div>
 
-          {/* Right Column */}
           <div className="lg:col-span-3">
             <Card className="gap-2">
               <CardHeader>
@@ -56,7 +53,6 @@ export function EditLotterySkeleton() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {/* Table header skeleton */}
                   <div className="hidden sm:grid grid-cols-5 gap-4 pb-2 border-b">
                     <Skeleton className="h-4 w-12" />
                     <Skeleton className="h-4 w-16" />
@@ -65,10 +61,8 @@ export function EditLotterySkeleton() {
                     <Skeleton className="h-4 w-12" />
                   </div>
 
-                  {/* Table rows skeleton */}
                   {[1, 2, 3, 4, 5].map((i) => (
                     <div key={i} className="space-y-3 sm:space-y-0">
-                      {/* Desktop row */}
                       <div className="hidden sm:grid grid-cols-5 gap-4 py-3 items-center">
                         <Skeleton className="h-4 w-16" />
                         <Skeleton className="h-4 w-24" />
@@ -80,7 +74,6 @@ export function EditLotterySkeleton() {
                         </div>
                       </div>
 
-                      {/* Mobile card */}
                       <div className="sm:hidden p-4 border rounded-lg space-y-3">
                         <div className="flex items-center justify-between">
                           <Skeleton className="h-5 w-32" />

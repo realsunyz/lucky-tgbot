@@ -114,6 +114,7 @@ func SetupRoutes(app *fiber.App, svc *service.LotteryService) {
 	drawLimiter := lotteryScopedLimiter(drawLimitMax, drawLimitWindow)
 
 	api.Get("/lottery/:id", h.getLottery)
+	api.Get("/stats", h.getStats)
 	api.Post("/lottery/:id", editLimiter, withWriteTimeout(h.createLottery))
 	api.Post("/lottery/:id/join", joinLimiter, withWriteTimeout(h.joinLottery))
 	api.Get("/lottery/:id/results", h.getResults)
@@ -144,6 +145,15 @@ func (h *Handler) tokenAuth(c fiber.Ctx) error {
 	}
 
 	return c.Next()
+}
+
+func (h *Handler) getStats(c fiber.Ctx) error {
+	stats, err := h.service.GetLotteryStats()
+	if err != nil {
+		logger.Errorf("failed to get lottery stats: %v", err)
+		return SendInternalError(c)
+	}
+	return c.JSON(stats)
 }
 
 func (h *Handler) getLottery(c fiber.Ctx) error {

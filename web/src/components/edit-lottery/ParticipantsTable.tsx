@@ -112,7 +112,6 @@ export function ParticipantsTable({
             </div>
           ) : (
             <>
-              {/* Desktop Table */}
               <div className="hidden sm:block rounded-md border overflow-hidden">
                 <Table>
                   <TableHeader>
@@ -184,7 +183,6 @@ export function ParticipantsTable({
                 </Table>
               </div>
 
-              {/* Mobile Cards */}
               <div className="sm:hidden space-y-2">
                 {participants.map((p) => (
                   <div
@@ -241,7 +239,6 @@ export function ParticipantsTable({
         </CardContent>
       </Card>
 
-      {/* Prize Weight Edit Dialog/Drawer */}
       <Dialog
         open={!!weightEditingParticipant}
         onOpenChange={(open) => !open && setWeightEditingParticipant(null)}

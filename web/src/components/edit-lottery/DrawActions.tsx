@@ -82,8 +82,6 @@ export function DrawActions({
   const [isConfirming, setIsConfirming] = useState(false);
   const confirmTimerRef = useRef<number | null>(null);
 
-  // Check if mobile
-
   // Reset form when dialog opens
   useEffect(() => {
     if (open) {
@@ -311,7 +309,6 @@ export function DrawActions({
         <CardDescription>修改开奖方式</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Current Draw Mode Display */}
         <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
           <div className="flex items-center gap-3">
             <Settings2 className="w-5 h-5 text-muted-foreground" />
@@ -346,7 +343,6 @@ export function DrawActions({
 
         <Separator />
 
-        {/* Draw Button */}
         <Button
           size="lg"
           variant={isConfirming ? "destructive" : "default"}

@@ -14,6 +14,15 @@ export interface Lottery {
   is_weights_disabled?: boolean;
 }
 
+export interface LotteryStats {
+  total_count: number;
+  draft_count: number;
+  active_count: number;
+  completed_count: number;
+  scheduled_count: number;
+  today_count: number;
+}
+
 export interface Prize {
   id?: number;
   lottery_id?: string;
@@ -164,7 +173,6 @@ export async function joinLottery(
   }
   return res.json();
 }
-
 // Add participant manually (Admin)
 export async function addParticipant(
   id: string,
@@ -288,4 +296,26 @@ export async function getResults(
     throw error;
   }
   return res.json();
+}
+
+export async function getLotteryStats(): Promise<LotteryStats> {
+  const res = await fetch(`${API_BASE}/api/stats`);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(
+      errorData.error || `Failed to fetch stats: ${res.statusText}`,
+    );
+  }
+  return res.json();
+}
+
+export async function checkHealth(
+  endpoint: "/livez" | "/readyz",
+): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE}${endpoint}`);
+    return res.ok;
+  } catch {
+    return false;
+  }
 }

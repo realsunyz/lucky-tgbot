@@ -57,3 +57,12 @@ type Winner struct {
 	Username      string `json:"username"`
 	PrizeName     string `json:"prize_name"`
 }
+
+type LotteryStats struct {
+	TotalCount     int `json:"total_count"`
+	DraftCount     int `json:"draft_count"`
+	ActiveCount    int `json:"active_count"`
+	CompletedCount int `json:"completed_count"`
+	ScheduledCount int `json:"scheduled_count"`
+	TodayCount     int `json:"today_count"`
+}

@@ -152,6 +152,10 @@ func (s *LotteryService) GetLotterySnapshot(id string) (*LotterySnapshot, error)
 	return snapshot, nil
 }
 
+func (s *LotteryService) GetLotteryStats() (*models.LotteryStats, error) {
+	return database.GetLotteryStats()
+}
+
 func (s *LotteryService) DeleteLottery(lotteryID string, userID int64) error {
 	lottery, err := database.GetLottery(lotteryID)
 	if err != nil {

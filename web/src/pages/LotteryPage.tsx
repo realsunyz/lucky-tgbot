@@ -223,7 +223,6 @@ export default function LotteryPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-          {/* Left Column: Main Content */}
           <div className="lg:col-span-2 space-y-6">
             <Card className="gap-2">
               <CardHeader>
@@ -289,7 +288,6 @@ export default function LotteryPage() {
               </CardContent>
             </Card>
 
-            {/* Winners / Participants Card */}
             <Card className="gap-2">
               <CardHeader>
                 <div className="flex flex-row items-center justify-between gap-2">
@@ -347,7 +345,6 @@ export default function LotteryPage() {
                             </TableRow>
                           )}
 
-                      {/* Render un-won (failed) prizes as list items if completed */}
                       {lottery.status === "completed" &&
                         failedPrizes.flatMap((prize, index) =>
                           Array.from({ length: prize.failedCount }).map(
@@ -384,7 +381,6 @@ export default function LotteryPage() {
             </Card>
           </div>
 
-          {/* Right Column: Sidebar */}
           <div className="space-y-6">
             <Card className="gap-2">
               <CardHeader>

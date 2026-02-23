@@ -36,6 +36,34 @@ func CountUserLotteriesCreatedSince(creatorID int64, since time.Time) (int, erro
 	return count, err
 }
 
+func GetLotteryStats() (*models.LotteryStats, error) {
+	db := GetDB()
+	var stats models.LotteryStats
+
+	now := time.Now().UTC()
+	dayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+
+	err := db.QueryRow(`
+		SELECT 
+			COUNT(*) as total_count,
+			SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END) as draft_count,
+			SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active_count,
+			SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_count,
+			SUM(CASE WHEN status = 'active' AND draw_mode = 'timed' AND draw_time > ? THEN 1 ELSE 0 END) as scheduled_count,
+			SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as today_count
+		FROM lotteries
+	`, now, dayStart).Scan(
+		&stats.TotalCount,
+		&stats.DraftCount,
+		&stats.ActiveCount,
+		&stats.CompletedCount,
+		&stats.ScheduledCount,
+		&stats.TodayCount,
+	)
+
+	return &stats, err
+}
+
 func GetLottery(id string) (*models.Lottery, error) {
 	db := GetDB()
 	lottery := &models.Lottery{}
