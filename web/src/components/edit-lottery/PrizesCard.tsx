@@ -209,6 +209,7 @@ export function PrizesCard({
               </TableHeader>
               <TableBody>
                 {(lottery.prizes || []).map((prize, index) => (
+                  // eslint-disable-next-line react/no-array-index-as-key
                   <TableRow key={index}>
                     <TableCell className="pl-4">
                       <div className="text-sm">
@@ -271,6 +272,7 @@ export function PrizesCard({
 
           <div className="sm:hidden space-y-2">
             {(lottery.prizes || []).map((prize, index) => (
+              // eslint-disable-next-line react/no-array-index-as-key
               <div
                 key={index}
                 className="px-3 py-2 border rounded-lg bg-card flex items-center justify-between gap-2"
@@ -405,11 +407,13 @@ function InlineTextEdit({
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [currentValue, setCurrentValue] = useState(value);
+  const [lastValue, setLastValue] = useState(value);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
+  if (value !== lastValue) {
     setCurrentValue(value);
-  }, [value]);
+    setLastValue(value);
+  }
 
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -454,7 +458,15 @@ function InlineTextEdit({
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={() => setIsEditing(true)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          setIsEditing(true);
+        }
+      }}
       className="cursor-text hover:underline decoration-dashed underline-offset-4 decoration-muted-foreground/50 py-1"
     >
       {value}
@@ -471,12 +483,14 @@ function InlineNumberEdit({
   onSave: (val: number) => void;
 }) {
   const [isEditing, setIsEditing] = useState(false);
-  const [currentValue, setCurrentValue] = useState(value.toString());
+  const [currentValue, setCurrentValue] = useState(() => value.toString());
+  const [lastValue, setLastValue] = useState(value);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
+  if (value !== lastValue) {
     setCurrentValue(value.toString());
-  }, [value]);
+    setLastValue(value);
+  }
 
   useEffect(() => {
     if (isEditing && inputRef.current) {

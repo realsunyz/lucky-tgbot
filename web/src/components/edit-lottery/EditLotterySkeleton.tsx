@@ -26,7 +26,7 @@ export function EditLotterySkeleton() {
               <CardContent className="space-y-4">
                 {[1, 2, 3].map((i) => (
                   <div
-                    key={i}
+                    key={`skeleton-${i}`}
                     className="flex justify-between items-center py-2"
                   >
                     <Skeleton className="h-4 w-16" />
@@ -62,7 +62,10 @@ export function EditLotterySkeleton() {
                   </div>
 
                   {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="space-y-3 sm:space-y-0">
+                    <div
+                      key={`skeleton-row-${i}`}
+                      className="space-y-3 sm:space-y-0"
+                    >
                       <div className="hidden sm:grid grid-cols-5 gap-4 py-3 items-center">
                         <Skeleton className="h-4 w-16" />
                         <Skeleton className="h-4 w-24" />

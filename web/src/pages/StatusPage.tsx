@@ -29,6 +29,50 @@ interface HealthStatus {
   ready: boolean | "checking";
 }
 
+const StatBox = ({
+  title,
+  value,
+  icon: Icon,
+  className = "",
+}: {
+  title: string;
+  value: string | number;
+  icon: any;
+  className?: string;
+}) => (
+  <Card className="border shadow-none">
+    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardTitle className="text-sm font-medium">{title}</CardTitle>
+      <Icon className={`h-4 w-4 text-muted-foreground ${className}`} />
+    </CardHeader>
+    <CardContent>
+      <div className="text-2xl font-bold">{value}</div>
+    </CardContent>
+  </Card>
+);
+
+const HealthBadge = ({ status }: { status: boolean | "checking" }) => {
+  if (status === "checking") {
+    return (
+      <Badge variant="outline" className="text-muted-foreground">
+        <Loader2 className="mr-1 h-3 w-3 animate-spin" /> 检查中
+      </Badge>
+    );
+  }
+  if (status) {
+    return (
+      <Badge className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20">
+        <CheckCircle2 className="mr-1 h-3 w-3" /> 正常
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="destructive">
+      <AlertCircle className="mr-1 h-3 w-3" /> 异常
+    </Badge>
+  );
+};
+
 export default function StatusPage() {
   const [stats, setStats] = useState<LotteryStats | null>(null);
   const [health, setHealth] = useState<HealthStatus>({
@@ -67,50 +111,6 @@ export default function StatusPage() {
   if (loading && !stats) {
     return <LoadingDisplay />;
   }
-
-  const StatBox = ({
-    title,
-    value,
-    icon: Icon,
-    className = "",
-  }: {
-    title: string;
-    value: string | number;
-    icon: any;
-    className?: string;
-  }) => (
-    <Card className="border shadow-none">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <Icon className={`h-4 w-4 text-muted-foreground ${className}`} />
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-      </CardContent>
-    </Card>
-  );
-
-  const HealthBadge = ({ status }: { status: boolean | "checking" }) => {
-    if (status === "checking") {
-      return (
-        <Badge variant="outline" className="text-muted-foreground">
-          <Loader2 className="mr-1 h-3 w-3 animate-spin" /> 检查中
-        </Badge>
-      );
-    }
-    if (status) {
-      return (
-        <Badge className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20">
-          <CheckCircle2 className="mr-1 h-3 w-3" /> 正常
-        </Badge>
-      );
-    }
-    return (
-      <Badge variant="destructive">
-        <AlertCircle className="mr-1 h-3 w-3" /> 异常
-      </Badge>
-    );
-  };
 
   return (
     <div className="container max-w-4xl mx-auto py-8 px-4 space-y-8">

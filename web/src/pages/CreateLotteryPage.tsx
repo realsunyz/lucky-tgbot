@@ -405,6 +405,7 @@ export default function CreateLotteryPage() {
                 </CardHeader>
                 <CardContent className="space-y-4 pt-0">
                   {prizes.map((prize, index) => (
+                    // eslint-disable-next-line react/no-array-index-as-key
                     <div key={index} className="flex gap-4 items-end">
                       <div className="flex-1 space-y-1.5">
                         <div className="flex justify-between">

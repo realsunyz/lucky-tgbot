@@ -241,11 +241,13 @@ export function ParticipantsTable({
 
       <Dialog
         open={!!weightEditingParticipant}
-        onOpenChange={(open) => !open && setWeightEditingParticipant(null)}
+        onOpenChange={(open: boolean) =>
+          !open && setWeightEditingParticipant(null)
+        }
       >
         <DialogContent
           className="max-w-md max-h-[80vh] overflow-y-auto"
-          onOpenAutoFocus={(e) => e.preventDefault()}
+          onOpenAutoFocus={(e: Event) => e.preventDefault()}
         >
           <DialogHeader>
             <DialogTitle>设置奖品权重</DialogTitle>
@@ -361,12 +363,16 @@ function PrizeWeightEditor({
       <hr />
 
       <div className="space-y-2">
-        <label className="text-sm text-muted-foreground block">
+        <label
+          htmlFor="prize-search"
+          className="text-sm text-muted-foreground block"
+        >
           添加单独权重
         </label>
         <div className="relative">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
+            id="prize-search"
             placeholder="搜索奖品..."
             className="pl-8"
             value={searchTerm}
@@ -505,7 +511,6 @@ function PrizeWeightRow({
           value={weight}
           onChange={(e) => setWeight(e.target.value)}
           onBlur={handleSave}
-          autoFocus={false}
         />
       </div>
     </div>
@@ -573,7 +578,6 @@ function GlobalWeightRow({
           value={weight}
           onChange={(e) => setWeight(e.target.value)}
           onBlur={handleSave}
-          autoFocus={false}
         />
       </div>
     </div>
