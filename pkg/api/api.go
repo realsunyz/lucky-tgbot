@@ -477,6 +477,9 @@ func StartServer(svc *service.LotteryService) {
 
 	app.Use("/assets", static.New("./web/dist/assets"))
 	SetupRoutes(app, svc)
+	app.Get("/robots.txt", func(c fiber.Ctx) error {
+		return c.SendFile("./web/dist/robots.txt")
+	})
 	app.Get("/*", func(c fiber.Ctx) error {
 		return c.SendFile("./web/dist/index.html")
 	})
