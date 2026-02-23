@@ -258,28 +258,31 @@ export default function LotteryPage() {
                   {lottery.prizes.map((prize, index) => {
                     const failedCount =
                       failedCountByPrizeKey.get(
-                        prize.id != null ? `id:${prize.id}` : `name:${prize.name}`,
+                        prize.id != null
+                          ? `id:${prize.id}`
+                          : `name:${prize.name}`,
                       ) || 0;
                     return (
-                    <div
-                      key={prize.id || index}
-                      className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors"
-                    >
-                      <span className="font-medium">{prize.name}</span>
-                      <div className="flex items-center gap-2">
-                        <Badge
-                          variant="secondary"
-                          className="text-sm px-3 py-0.5"
-                        >
-                          × {prize.quantity}
-                        </Badge>
-                        {lottery.status === "completed" && failedCount > 0 && (
-                          <Badge className="bg-red-500 hover:bg-red-600 text-white text-sm px-3 py-0.5">
-                            流标 × {failedCount}
+                      <div
+                        key={prize.id || index}
+                        className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors"
+                      >
+                        <span className="font-medium">{prize.name}</span>
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant="secondary"
+                            className="text-sm px-3 py-0.5"
+                          >
+                            × {prize.quantity}
                           </Badge>
-                        )}
+                          {lottery.status === "completed" &&
+                            failedCount > 0 && (
+                              <Badge className="bg-red-500 hover:bg-red-600 text-white text-sm px-3 py-0.5">
+                                流标 × {failedCount}
+                              </Badge>
+                            )}
+                        </div>
                       </div>
-                    </div>
                     );
                   })}
                 </div>
@@ -321,44 +324,62 @@ export default function LotteryPage() {
                     <TableBody>
                       {lottery.status === "completed" &&
                       lottery.winners &&
-                      lottery.winners.length > 0 ? (
-                        lottery.winners.map((winner) => (
-                          <TableRow key={winner.id}>
-                            <TableCell className="font-mono text-muted-foreground">
-                              {winner.user_id}
-                            </TableCell>
-                            <TableCell className="text-right font-medium">
-                              {winner.prize_name}
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
+                      lottery.winners.length > 0
+                        ? lottery.winners.map((winner) => (
+                            <TableRow key={winner.id} className="h-12">
+                              <TableCell className="font-mono text-muted-foreground">
+                                {winner.user_id}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {winner.prize_name}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        : lottery.status === "completed" &&
+                          failedPrizes.length === 0 && (
+                            <TableRow>
+                              <TableCell
+                                colSpan={2}
+                                className="text-center py-12 text-muted-foreground"
+                              >
+                                暂无中奖记录
+                              </TableCell>
+                            </TableRow>
+                          )}
+
+                      {/* Render un-won (failed) prizes as list items if completed */}
+                      {lottery.status === "completed" &&
+                        failedPrizes.flatMap((prize, index) =>
+                          Array.from({ length: prize.failedCount }).map(
+                            (_, i) => (
+                              <TableRow
+                                key={`failed-${prize.id || prize.name}-${index}-${i}`}
+                                className="h-12"
+                              >
+                                <TableCell className="font-mono text-red-500">
+                                  NO WINNER
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {prize.name}
+                                </TableCell>
+                              </TableRow>
+                            ),
+                          ),
+                        )}
+
+                      {lottery.status !== "completed" && (
                         <TableRow>
                           <TableCell
                             colSpan={2}
                             className="text-center py-12 text-muted-foreground"
                           >
-                            {lottery.status === "completed"
-                              ? "暂无中奖记录"
-                              : "尚未开奖, 敬请期待"}
+                            尚未开奖, 敬请期待
                           </TableCell>
                         </TableRow>
                       )}
                     </TableBody>
                   </Table>
                 </div>
-                {lottery.status === "completed" && failedPrizes.length > 0 && (
-                  <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                    <div className="font-medium mb-1">流标奖品</div>
-                    <div className="space-y-1">
-                      {failedPrizes.map((prize, index) => (
-                        <div key={`${prize.id || prize.name}-${index}`}>
-                          {prize.name} × {prize.failedCount}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
           </div>
