@@ -353,7 +353,7 @@ func sendWinnerNotification(ctx context.Context, b *bot.Bot, lottery *dbmodels.L
 
 	var winnerLines []string
 	for _, w := range winners {
-		winnerLines = append(winnerLines, fmt.Sprintf("- %d 获得了 \"%s\"", w.UserID, w.PrizeName))
+		winnerLines = append(winnerLines, fmt.Sprintf("- <a href=\"tg://user?id=%d\">%d</a> 获得了 \"%s\"", w.UserID, w.UserID, w.PrizeName))
 	}
 	failedPrizesText := ""
 	prizes, prizeErr := database.GetPrizes(lottery.ID)

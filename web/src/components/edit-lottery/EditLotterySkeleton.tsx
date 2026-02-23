@@ -8,7 +8,6 @@ export function EditLotterySkeleton() {
         <div className="text-center sm:text-left space-y-2">
           <div className="flex flex-col sm:flex-row items-center sm:items-baseline gap-3 justify-center sm:justify-start">
             <Skeleton className="h-9 w-48" />
-            <Skeleton className="hidden sm:block h-6 w-16 rounded-full" />
           </div>
           <div className="flex flex-wrap gap-4 sm:gap-6 justify-center sm:justify-start">
             <Skeleton className="h-5 w-24" />

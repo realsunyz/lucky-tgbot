@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Checkbox as CheckboxPrimitive } from "radix-ui";
 import {
-  m as motion,
+  motion,
   type SVGMotionProps,
   type HTMLMotionProps,
 } from "motion/react";

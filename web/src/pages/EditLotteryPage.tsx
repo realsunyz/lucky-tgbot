@@ -1,5 +1,4 @@
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
-import { Badge } from "@/components/ui/badge";
 import { Hash, UserRoundPlus } from "lucide-react";
 import { UI_MESSAGES } from "@/utils/errors";
 
@@ -72,11 +71,8 @@ export default function EditLotteryPage() {
     <div className="py-8 px-4 flex justify-center w-full">
       <div className="w-full max-w-6xl space-y-6">
         <div className="text-center sm:text-left space-y-2">
-          <div className="flex flex-col sm:flex-row items-center sm:items-baseline gap-3 justify-center sm:justify-between w-full">
+          <div className="flex flex-col sm:flex-row items-center sm:items-baseline gap-3 justify-center sm:justify-start">
             <h1 className="text-3xl font-bold">{lottery.title}</h1>
-            <Badge className="bg-green-600 hover:bg-green-700 text-white mt-2 sm:mt-0 px-3 py-0 h-[28px] font-normal text-sm border-transparent rounded-full">
-              进行中
-            </Badge>
           </div>
           <div className="text-muted-foreground flex flex-wrap gap-4 sm:gap-6 justify-center items-center sm:justify-start text-sm">
             <span className="flex items-center gap-1.5">

@@ -459,7 +459,7 @@ export default function CreateLotteryPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => removePrize(index)}
-                          className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-10 w-10 shrink-0"
+                          className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-9 w-9 shrink-0"
                         >
                           <Trash2 className="h-4 w-4" />
                           <span className="sr-only">删除</span>
