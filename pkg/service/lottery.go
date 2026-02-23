@@ -25,6 +25,13 @@ var (
 	ErrPermissionDenied    = errors.New("permission denied")
 	ErrParticipantExists   = errors.New("participant already exists")
 	ErrLotteryCannotDelete = errors.New("cannot delete lottery in current state")
+	ErrCreateTooFrequent   = errors.New("lottery creation too frequent")
+	ErrCreateDailyLimit    = errors.New("lottery creation daily limit reached")
+)
+
+const (
+	createLotteryCooldown = time.Minute
+	maxDailyCreateCount   = 10
 )
 
 type Notifier interface {
@@ -78,6 +85,24 @@ func NewLotteryService(db *sql.DB, notifier Notifier) *LotteryService {
 }
 
 func (s *LotteryService) CreateDraftLottery(creatorID int64) (*models.Lottery, error) {
+	now := time.Now().UTC()
+	recentCount, err := database.CountUserLotteriesCreatedSince(creatorID, now.Add(-createLotteryCooldown))
+	if err != nil {
+		return nil, err
+	}
+	if recentCount > 0 {
+		return nil, ErrCreateTooFrequent
+	}
+
+	dayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	dailyCount, err := database.CountUserLotteriesCreatedSince(creatorID, dayStart)
+	if err != nil {
+		return nil, err
+	}
+	if dailyCount >= maxDailyCreateCount {
+		return nil, ErrCreateDailyLimit
+	}
+
 	id, err := database.GenerateLotteryID()
 	if err != nil {
 		return nil, err

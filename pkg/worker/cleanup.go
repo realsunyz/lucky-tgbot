@@ -22,13 +22,15 @@ func StartCleanupWorker() {
 			if err := checkpointWAL(); err != nil {
 				logger.Errorf("error checkpointing WAL: %v", err)
 			}
+			if err := optimizeSQLite(); err != nil {
+				logger.Errorf("error optimizing sqlite: %v", err)
+			}
 		}
 	}()
 }
 
 func cleanupDrafts() error {
 	db := database.GetDB()
-	// Delete drafts created more than 1 hour ago
 	cutoff := time.Now().UTC().Add(-1 * time.Hour)
 	result, err := db.Exec(`DELETE FROM lotteries WHERE status = 'draft' AND created_at < ?`, cutoff)
 	if err != nil {
@@ -43,7 +45,6 @@ func cleanupDrafts() error {
 
 func cleanupExpiredTokens() error {
 	db := database.GetDB()
-	// Delete tokens that have expired
 	result, err := db.Exec(`DELETE FROM edit_tokens WHERE expires_at < ?`, time.Now().UTC())
 	if err != nil {
 		return err
@@ -58,5 +59,11 @@ func cleanupExpiredTokens() error {
 func checkpointWAL() error {
 	db := database.GetDB()
 	_, err := db.Exec(`PRAGMA wal_checkpoint(TRUNCATE)`)
+	return err
+}
+
+func optimizeSQLite() error {
+	db := database.GetDB()
+	_, err := db.Exec(`PRAGMA optimize`)
 	return err
 }

@@ -26,6 +26,16 @@ func CreateLottery(lottery *models.Lottery) error {
 	return err
 }
 
+func CountUserLotteriesCreatedSince(creatorID int64, since time.Time) (int, error) {
+	db := GetDB()
+	var count int
+	err := db.QueryRow(`
+		SELECT COUNT(*) FROM lotteries
+		WHERE creator_id = ? AND created_at >= ?
+	`, creatorID, since).Scan(&count)
+	return count, err
+}
+
 func GetLottery(id string) (*models.Lottery, error) {
 	db := GetDB()
 	lottery := &models.Lottery{}

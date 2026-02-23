@@ -54,6 +54,18 @@ func GetDB() *sql.DB {
 		if _, err := db.Exec("PRAGMA synchronous=NORMAL"); err != nil {
 			logger.Warnf("failed to set synchronous mode: %v", err)
 		}
+		if _, err := db.Exec("PRAGMA temp_store=MEMORY"); err != nil {
+			logger.Warnf("failed to set temp_store mode: %v", err)
+		}
+		if _, err := db.Exec("PRAGMA cache_size=-20000"); err != nil {
+			logger.Warnf("failed to set cache size: %v", err)
+		}
+		if _, err := db.Exec("PRAGMA mmap_size=268435456"); err != nil {
+			logger.Warnf("failed to set mmap size: %v", err)
+		}
+		if _, err := db.Exec("PRAGMA journal_size_limit=67108864"); err != nil {
+			logger.Warnf("failed to set journal size limit: %v", err)
+		}
 
 		// Initialize schema
 		if err := initSchema(); err != nil {
@@ -146,6 +158,7 @@ func initSchema() error {
 	CREATE INDEX IF NOT EXISTS idx_winners_lottery ON winners(lottery_id);
 	CREATE INDEX IF NOT EXISTS idx_lotteries_timed_due ON lotteries(status, draw_mode, draw_time);
 	CREATE INDEX IF NOT EXISTS idx_lotteries_draft_created ON lotteries(status, created_at);
+	CREATE INDEX IF NOT EXISTS idx_lotteries_creator_created ON lotteries(creator_id, created_at);
 	`
 
 	_, err := db.Exec(schema)

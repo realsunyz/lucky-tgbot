@@ -63,10 +63,23 @@ func HandleLotteryCommand(ctx context.Context, b *bot.Bot, update *tgmodels.Upda
 	lottery, err := lotteryService.CreateDraftLottery(update.Message.From.ID)
 	if err != nil {
 		logger.Errorf("failed to create draft lottery: %v", err)
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   "❌ 创建抽奖失败, 请稍后重试",
-		})
+		switch {
+		case errors.Is(err, service.ErrCreateTooFrequent):
+			b.SendMessage(ctx, &bot.SendMessageParams{
+				ChatID: update.Message.Chat.ID,
+				Text:   "⚠️ 创建过于频繁, 请 1 分钟后再试",
+			})
+		case errors.Is(err, service.ErrCreateDailyLimit):
+			b.SendMessage(ctx, &bot.SendMessageParams{
+				ChatID: update.Message.Chat.ID,
+				Text:   "⚠️ 今日抽奖创建次数已达上限",
+			})
+		default:
+			b.SendMessage(ctx, &bot.SendMessageParams{
+				ChatID: update.Message.Chat.ID,
+				Text:   "❌ 创建抽奖失败, 请稍后重试",
+			})
+		}
 		return
 	}
 
