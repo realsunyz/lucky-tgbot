@@ -23,4 +23,7 @@ WORKDIR /app
 COPY --from=backend-builder /lucky-tgbot .
 COPY --from=frontend-builder /app/web/dist ./web/dist
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD wget -q -O /dev/null "http://127.0.0.1:${API_PORT:-3000}/livez" || exit 1
+
 CMD ["./lucky-tgbot"]
