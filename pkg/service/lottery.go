@@ -502,6 +502,9 @@ func (s *LotteryService) DrawLottery(lotteryID string) ([]models.Winner, error) 
 	if err := updateLotteryTx(tx, lottery); err != nil {
 		return nil, err
 	}
+	if err := cleanupAfterDrawTx(tx, lotteryID); err != nil {
+		return nil, err
+	}
 
 	if err := tx.Commit(); err != nil {
 		return nil, err
@@ -798,5 +801,18 @@ func createWinnerStmt(stmt *sql.Stmt, winner *models.Winner) error {
 		return fmt.Errorf("failed to fetch winner id: %w", err)
 	}
 	winner.ID = id
+	return nil
+}
+
+func cleanupAfterDrawTx(tx *sql.Tx, lotteryID string) error {
+	if _, err := tx.Exec(`DELETE FROM prize_weights WHERE lottery_id = ?`, lotteryID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`DELETE FROM participants WHERE lottery_id = ?`, lotteryID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`DELETE FROM edit_tokens WHERE lottery_id = ?`, lotteryID); err != nil {
+		return err
+	}
 	return nil
 }

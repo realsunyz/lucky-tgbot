@@ -122,7 +122,6 @@ func initSchema() error {
 		username TEXT,
 		prize_name TEXT NOT NULL,
 		FOREIGN KEY (lottery_id) REFERENCES lotteries(id) ON DELETE CASCADE,
-		FOREIGN KEY (participant_id) REFERENCES participants(id) ON DELETE CASCADE,
 		FOREIGN KEY (prize_id) REFERENCES prizes(id) ON DELETE CASCADE
 	);
 
