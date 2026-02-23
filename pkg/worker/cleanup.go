@@ -32,26 +32,18 @@ func StartCleanupWorker() {
 func cleanupDrafts() error {
 	db := database.GetDB()
 	cutoff := time.Now().UTC().Add(-1 * time.Hour)
-	result, err := db.Exec(`DELETE FROM lotteries WHERE status = 'draft' AND created_at < ?`, cutoff)
+	_, err := db.Exec(`DELETE FROM lotteries WHERE status = 'draft' AND created_at < ?`, cutoff)
 	if err != nil {
 		return err
-	}
-	rowsAffected, _ := result.RowsAffected()
-	if rowsAffected > 0 {
-		logger.Infof("cleaned up %d stale draft lotteries", rowsAffected)
 	}
 	return nil
 }
 
 func cleanupExpiredTokens() error {
 	db := database.GetDB()
-	result, err := db.Exec(`DELETE FROM edit_tokens WHERE expires_at < ?`, time.Now().UTC())
+	_, err := db.Exec(`DELETE FROM edit_tokens WHERE expires_at < ?`, time.Now().UTC())
 	if err != nil {
 		return err
-	}
-	rowsAffected, _ := result.RowsAffected()
-	if rowsAffected > 0 {
-		logger.Infof("cleaned up %d expired edit tokens", rowsAffected)
 	}
 	return nil
 }

@@ -82,6 +82,7 @@ func HandleLotteryCommand(ctx context.Context, b *bot.Bot, update *tgmodels.Upda
 		}
 		return
 	}
+	logger.Infof("user %d created lottery %s", update.Message.From.ID, lottery.ID)
 
 	createLink := fmt.Sprintf("%s/create/%s", getWebDomain(), lottery.ID)
 	message := fmt.Sprintf("✅ 新抽奖创建成功\n\n请在 30 分钟内点击下方链接完成抽奖设置:\n%s", createLink)
