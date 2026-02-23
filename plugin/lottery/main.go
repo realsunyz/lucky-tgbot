@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-telegram/bot"
 	tgmodels "github.com/go-telegram/bot/models"
+	"github.com/realSunyz/lucky-tgbot/pkg/database"
 	"github.com/realSunyz/lucky-tgbot/pkg/logger"
 	dbmodels "github.com/realSunyz/lucky-tgbot/pkg/models"
 	"github.com/realSunyz/lucky-tgbot/pkg/service"
@@ -340,8 +341,28 @@ func sendWinnerNotification(ctx context.Context, b *bot.Bot, lottery *dbmodels.L
 	for _, w := range winners {
 		winnerLines = append(winnerLines, fmt.Sprintf("- %d 获得了 \"%s\"", w.UserID, w.PrizeName))
 	}
-	creatorMessage := fmt.Sprintf("🎊 开奖已完成\n\n抽奖 ID: <code>%s</code>\n抽奖标题: %s\n中奖用户列表:\n%s\n\n更多详情请前往网页端查看:\n%s",
-		lottery.ID, lottery.Title, strings.Join(winnerLines, "\n"), resultLink)
+	failedPrizesText := ""
+	prizes, prizeErr := database.GetPrizes(lottery.ID)
+	if prizeErr == nil {
+		winnerCountByPrizeID := make(map[int64]int)
+		for _, w := range winners {
+			winnerCountByPrizeID[w.PrizeID]++
+		}
+
+		var failedPrizeLines []string
+		for _, prize := range prizes {
+			failedCount := prize.Quantity - winnerCountByPrizeID[prize.ID]
+			if failedCount > 0 {
+				failedPrizeLines = append(failedPrizeLines, fmt.Sprintf("- %s × %d", prize.Name, failedCount))
+			}
+		}
+		if len(failedPrizeLines) > 0 {
+			failedPrizesText = "\n流标奖品:\n" + strings.Join(failedPrizeLines, "\n")
+		}
+	}
+
+	creatorMessage := fmt.Sprintf("🎊 开奖已完成\n\n抽奖 ID: <code>%s</code>\n抽奖标题: %s\n中奖用户列表:\n%s%s\n\n更多详情请前往网页端查看:\n%s",
+		lottery.ID, lottery.Title, strings.Join(winnerLines, "\n"), failedPrizesText, resultLink)
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    lottery.CreatorID,
 		Text:      creatorMessage,

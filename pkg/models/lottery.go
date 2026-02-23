@@ -7,6 +7,7 @@ type Lottery struct {
 	Title             string     `json:"title"`
 	Description       string     `json:"description"`
 	CreatorID         int64      `json:"creator_id"`
+	Participants      int        `json:"participants"`
 	DrawMode          string     `json:"draw_mode"`
 	DrawTime          *time.Time `json:"draw_time"`
 	MaxEntries        *int       `json:"max_entries"`

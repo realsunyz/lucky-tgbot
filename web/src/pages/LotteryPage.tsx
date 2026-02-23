@@ -144,6 +144,36 @@ export default function LotteryPage() {
 
   const totalPrizes = lottery.prizes.reduce((acc, p) => acc + p.quantity, 0);
   const participantCount = lottery.participant_count || 0;
+  const winnerCountByPrizeId = new Map<number, number>();
+  const winnerCountByPrizeName = new Map<string, number>();
+  (lottery.winners || []).forEach((winner) => {
+    winnerCountByPrizeId.set(
+      winner.prize_id,
+      (winnerCountByPrizeId.get(winner.prize_id) || 0) + 1,
+    );
+    winnerCountByPrizeName.set(
+      winner.prize_name,
+      (winnerCountByPrizeName.get(winner.prize_name) || 0) + 1,
+    );
+  });
+  const failedPrizes =
+    lottery.status === "completed"
+      ? lottery.prizes
+          .map((prize) => {
+            const wonCount =
+              prize.id != null
+                ? winnerCountByPrizeId.get(prize.id) || 0
+                : winnerCountByPrizeName.get(prize.name) || 0;
+            const failedCount = Math.max(prize.quantity - wonCount, 0);
+            return { ...prize, failedCount };
+          })
+          .filter((prize) => prize.failedCount > 0)
+      : [];
+  const failedCountByPrizeKey = new Map<string, number>();
+  failedPrizes.forEach((prize) => {
+    const key = prize.id != null ? `id:${prize.id}` : `name:${prize.name}`;
+    failedCountByPrizeKey.set(key, prize.failedCount);
+  });
   const winRateValue =
     participantCount > 0
       ? Math.min((totalPrizes / participantCount) * 100, 100)
@@ -225,20 +255,33 @@ export default function LotteryPage() {
               </CardHeader>
               <CardContent>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {lottery.prizes.map((prize, index) => (
+                  {lottery.prizes.map((prize, index) => {
+                    const failedCount =
+                      failedCountByPrizeKey.get(
+                        prize.id != null ? `id:${prize.id}` : `name:${prize.name}`,
+                      ) || 0;
+                    return (
                     <div
                       key={prize.id || index}
                       className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors"
                     >
                       <span className="font-medium">{prize.name}</span>
-                      <Badge
-                        variant="secondary"
-                        className="text-sm px-3 py-0.5"
-                      >
-                        × {prize.quantity}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant="secondary"
+                          className="text-sm px-3 py-0.5"
+                        >
+                          × {prize.quantity}
+                        </Badge>
+                        {lottery.status === "completed" && failedCount > 0 && (
+                          <Badge className="bg-red-500 hover:bg-red-600 text-white text-sm px-3 py-0.5">
+                            流标 × {failedCount}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -304,6 +347,18 @@ export default function LotteryPage() {
                     </TableBody>
                   </Table>
                 </div>
+                {lottery.status === "completed" && failedPrizes.length > 0 && (
+                  <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                    <div className="font-medium mb-1">流标奖品</div>
+                    <div className="space-y-1">
+                      {failedPrizes.map((prize, index) => (
+                        <div key={`${prize.id || prize.name}-${index}`}>
+                          {prize.name} × {prize.failedCount}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

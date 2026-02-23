@@ -84,10 +84,11 @@ func (s *LotteryService) CreateDraftLottery(creatorID int64) (*models.Lottery, e
 	}
 
 	lottery := &models.Lottery{
-		ID:        id,
-		CreatorID: creatorID,
-		Status:    "draft",
-		DrawMode:  "manual",
+		ID:           id,
+		CreatorID:    creatorID,
+		Participants: 0,
+		Status:       "draft",
+		DrawMode:     "manual",
 	}
 	if err := database.CreateLottery(lottery); err != nil {
 		return nil, err
@@ -109,15 +110,10 @@ func (s *LotteryService) GetLotterySnapshot(id string) (*LotterySnapshot, error)
 		return nil, err
 	}
 
-	count, err := database.GetParticipantCount(id)
-	if err != nil {
-		return nil, err
-	}
-
 	snapshot := &LotterySnapshot{
 		Lottery:          lottery,
 		Prizes:           prizes,
-		ParticipantCount: count,
+		ParticipantCount: lottery.Participants,
 	}
 
 	if lottery.Status == "completed" {
@@ -186,6 +182,7 @@ func (s *LotteryService) CreateLottery(id string, input CreateLotteryInput) (*mo
 		Title:             input.Title,
 		Description:       input.Description,
 		CreatorID:         input.CreatorID,
+		Participants:      0,
 		DrawMode:          input.DrawMode,
 		DrawTime:          input.DrawTime,
 		MaxEntries:        input.MaxEntries,
@@ -322,14 +319,8 @@ func (s *LotteryService) JoinLottery(lotteryID string, input JoinInput) (*models
 		return lottery, nil, ErrLotteryNotActive
 	}
 
-	if lottery.MaxEntries != nil {
-		count, err := database.GetParticipantCount(lotteryID)
-		if err != nil {
-			return nil, nil, err
-		}
-		if count >= *lottery.MaxEntries {
-			return lottery, nil, ErrLotteryFull
-		}
+	if lottery.MaxEntries != nil && lottery.Participants >= *lottery.MaxEntries {
+		return lottery, nil, ErrLotteryFull
 	}
 
 	participant := &models.Participant{
@@ -347,10 +338,10 @@ func (s *LotteryService) JoinLottery(lotteryID string, input JoinInput) (*models
 		}
 		return nil, nil, err
 	}
+	lottery.Participants++
 
 	if lottery.DrawMode == "full" && lottery.MaxEntries != nil {
-		count, err := database.GetParticipantCount(lotteryID)
-		if err == nil && count >= *lottery.MaxEntries {
+		if lottery.Participants >= *lottery.MaxEntries {
 			go s.drawWithRetry(lotteryID, "full")
 		}
 	}
@@ -499,6 +490,7 @@ func (s *LotteryService) DrawLottery(lotteryID string) ([]models.Winner, error) 
 	}
 
 	lottery.Status = "completed"
+	lottery.Participants = len(participants)
 	if err := updateLotteryTx(tx, lottery); err != nil {
 		return nil, err
 	}
@@ -529,7 +521,7 @@ func (s *LotteryService) CheckAutoDrawLotteries() error {
 			(
 				l.draw_mode = 'full'
 				AND l.max_entries IS NOT NULL
-				AND (SELECT COUNT(*) FROM participants p WHERE p.lottery_id = l.id) >= l.max_entries
+				AND l.participants >= l.max_entries
 			)
 		)
 	`, now)
@@ -582,7 +574,7 @@ func drawWinners(lotteryID string, prizes []models.Prize, participants []models.
 		return nil
 	}
 
-	wonPrizes := make(map[int64]map[int64]bool)
+	wonUsers := make(map[int64]bool)
 	var winners []models.Winner
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
@@ -622,13 +614,10 @@ func drawWinners(lotteryID string, prizes []models.Prize, participants []models.
 				poolIndex++
 				attempts++
 
-				if wonPrizes[candidate.UserID] == nil {
-					wonPrizes[candidate.UserID] = make(map[int64]bool)
-				}
-				if wonPrizes[candidate.UserID][prize.ID] {
+				if wonUsers[candidate.UserID] {
 					continue
 				}
-				wonPrizes[candidate.UserID][prize.ID] = true
+				wonUsers[candidate.UserID] = true
 
 				winners = append(winners, models.Winner{
 					LotteryID:     lotteryID,
@@ -648,22 +637,23 @@ func drawWinners(lotteryID string, prizes []models.Prize, participants []models.
 
 func createLotteryTx(tx *sql.Tx, lottery *models.Lottery) error {
 	_, err := tx.Exec(`
-		INSERT INTO lotteries (id, title, description, creator_id, draw_mode, draw_time, max_entries, status, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, lottery.ID, lottery.Title, lottery.Description, lottery.CreatorID, lottery.DrawMode, lottery.DrawTime, lottery.MaxEntries, lottery.Status, lottery.CreatedAt)
+		INSERT INTO lotteries (id, title, description, creator_id, participants, draw_mode, draw_time, max_entries, status, created_at, is_weights_disabled)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, lottery.ID, lottery.Title, lottery.Description, lottery.CreatorID, lottery.Participants, lottery.DrawMode, lottery.DrawTime, lottery.MaxEntries, lottery.Status, lottery.CreatedAt, lottery.IsWeightsDisabled)
 	return err
 }
 
 func getLotteryTx(tx *sql.Tx, id string) (*models.Lottery, error) {
 	lottery := &models.Lottery{}
 	err := tx.QueryRow(`
-		SELECT id, title, description, creator_id, draw_mode, draw_time, max_entries, status, created_at, is_weights_disabled
+		SELECT id, title, description, creator_id, participants, draw_mode, draw_time, max_entries, status, created_at, is_weights_disabled
 		FROM lotteries WHERE id = ?
 	`, id).Scan(
 		&lottery.ID,
 		&lottery.Title,
 		&lottery.Description,
 		&lottery.CreatorID,
+		&lottery.Participants,
 		&lottery.DrawMode,
 		&lottery.DrawTime,
 		&lottery.MaxEntries,
@@ -683,9 +673,9 @@ func getLotteryTx(tx *sql.Tx, id string) (*models.Lottery, error) {
 func updateLotteryTx(tx *sql.Tx, lottery *models.Lottery) error {
 	_, err := tx.Exec(`
 		UPDATE lotteries
-		SET title = ?, description = ?, draw_mode = ?, draw_time = ?, max_entries = ?, status = ?, is_weights_disabled = ?
+		SET title = ?, description = ?, participants = ?, draw_mode = ?, draw_time = ?, max_entries = ?, status = ?, is_weights_disabled = ?
 		WHERE id = ?
-	`, lottery.Title, lottery.Description, lottery.DrawMode, lottery.DrawTime, lottery.MaxEntries, lottery.Status, lottery.IsWeightsDisabled, lottery.ID)
+	`, lottery.Title, lottery.Description, lottery.Participants, lottery.DrawMode, lottery.DrawTime, lottery.MaxEntries, lottery.Status, lottery.IsWeightsDisabled, lottery.ID)
 	return err
 }
 

@@ -73,6 +73,7 @@ func initSchema() error {
 		title TEXT NOT NULL,
 		description TEXT,
 		creator_id INTEGER NOT NULL,
+		participants INTEGER NOT NULL DEFAULT 0,
 		draw_mode TEXT NOT NULL CHECK(draw_mode IN ('timed', 'full', 'manual')),
 		draw_time DATETIME,
 		max_entries INTEGER,

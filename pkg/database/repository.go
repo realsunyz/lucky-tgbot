@@ -20,9 +20,9 @@ func CreateLottery(lottery *models.Lottery) error {
 	}
 
 	_, err := db.Exec(`
-		INSERT INTO lotteries (id, title, description, creator_id, draw_mode, draw_time, max_entries, status, created_at, is_weights_disabled)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, lottery.ID, lottery.Title, lottery.Description, lottery.CreatorID, lottery.DrawMode, lottery.DrawTime, lottery.MaxEntries, lottery.Status, lottery.CreatedAt, lottery.IsWeightsDisabled)
+		INSERT INTO lotteries (id, title, description, creator_id, participants, draw_mode, draw_time, max_entries, status, created_at, is_weights_disabled)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, lottery.ID, lottery.Title, lottery.Description, lottery.CreatorID, lottery.Participants, lottery.DrawMode, lottery.DrawTime, lottery.MaxEntries, lottery.Status, lottery.CreatedAt, lottery.IsWeightsDisabled)
 	return err
 }
 
@@ -30,9 +30,9 @@ func GetLottery(id string) (*models.Lottery, error) {
 	db := GetDB()
 	lottery := &models.Lottery{}
 	err := db.QueryRow(`
-		SELECT id, title, description, creator_id, draw_mode, draw_time, max_entries, status, created_at, is_weights_disabled
+		SELECT id, title, description, creator_id, participants, draw_mode, draw_time, max_entries, status, created_at, is_weights_disabled
 		FROM lotteries WHERE id = ?
-	`, id).Scan(&lottery.ID, &lottery.Title, &lottery.Description, &lottery.CreatorID, &lottery.DrawMode, &lottery.DrawTime, &lottery.MaxEntries, &lottery.Status, &lottery.CreatedAt, &lottery.IsWeightsDisabled)
+	`, id).Scan(&lottery.ID, &lottery.Title, &lottery.Description, &lottery.CreatorID, &lottery.Participants, &lottery.DrawMode, &lottery.DrawTime, &lottery.MaxEntries, &lottery.Status, &lottery.CreatedAt, &lottery.IsWeightsDisabled)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -42,9 +42,9 @@ func GetLottery(id string) (*models.Lottery, error) {
 func UpdateLottery(lottery *models.Lottery) error {
 	db := GetDB()
 	_, err := db.Exec(`
-		UPDATE lotteries SET title = ?, description = ?, draw_mode = ?, draw_time = ?, max_entries = ?, status = ?, is_weights_disabled = ?
+		UPDATE lotteries SET title = ?, description = ?, participants = ?, draw_mode = ?, draw_time = ?, max_entries = ?, status = ?, is_weights_disabled = ?
 		WHERE id = ?
-	`, lottery.Title, lottery.Description, lottery.DrawMode, lottery.DrawTime, lottery.MaxEntries, lottery.Status, lottery.IsWeightsDisabled, lottery.ID)
+	`, lottery.Title, lottery.Description, lottery.Participants, lottery.DrawMode, lottery.DrawTime, lottery.MaxEntries, lottery.Status, lottery.IsWeightsDisabled, lottery.ID)
 	return err
 }
 
@@ -77,7 +77,19 @@ func AddParticipant(p *models.Participant) error {
 		p.Weight = 1
 	}
 
-	result, err := db.Exec(`
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	result, err := tx.Exec(`
 		INSERT INTO participants (lottery_id, user_id, username, first_name, last_name, weight, joined_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(lottery_id, user_id) DO NOTHING
@@ -86,11 +98,25 @@ func AddParticipant(p *models.Participant) error {
 		return err
 	}
 	rows, err := result.RowsAffected()
-	if err == nil && rows == 0 {
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
 		return ErrParticipantExists
 	}
+
+	if _, err = tx.Exec(`UPDATE lotteries SET participants = participants + 1 WHERE id = ?`, p.LotteryID); err != nil {
+		return err
+	}
+
 	id, _ := result.LastInsertId()
 	p.ID = id
+
+	if err = tx.Commit(); err != nil {
+		return err
+	}
+	committed = true
+
 	return nil
 }
 
@@ -129,13 +155,6 @@ func GetParticipants(lotteryID string) ([]models.Participant, error) {
 	}
 
 	return participants, nil
-}
-
-func GetParticipantCount(lotteryID string) (int, error) {
-	db := GetDB()
-	var count int
-	err := db.QueryRow(`SELECT COUNT(*) FROM participants WHERE lottery_id = ?`, lotteryID).Scan(&count)
-	return count, err
 }
 
 func UpdateParticipantWeight(lotteryID string, userID int64, weight int) error {
@@ -186,8 +205,41 @@ func GetPrizeWeights(lotteryID string) ([]models.PrizeWeight, error) {
 
 func RemoveParticipant(lotteryID string, userID int64) error {
 	db := GetDB()
-	_, err := db.Exec(`DELETE FROM participants WHERE lottery_id = ? AND user_id = ?`, lotteryID, userID)
-	return err
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	result, err := tx.Exec(`DELETE FROM participants WHERE lottery_id = ? AND user_id = ?`, lotteryID, userID)
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows > 0 {
+		if _, err = tx.Exec(`UPDATE lotteries SET participants = MAX(participants - 1, 0) WHERE id = ?`, lotteryID); err != nil {
+			return err
+		}
+		if _, err = tx.Exec(`DELETE FROM prize_weights WHERE lottery_id = ? AND user_id = ?`, lotteryID, userID); err != nil {
+			return err
+		}
+	}
+
+	if err = tx.Commit(); err != nil {
+		return err
+	}
+	committed = true
+	return nil
 }
 
 func CreateEditToken(token *models.EditToken) error {
