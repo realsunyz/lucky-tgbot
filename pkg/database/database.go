@@ -168,10 +168,3 @@ func initSchema() error {
 
 	return nil
 }
-
-func Close() error {
-	if db != nil {
-		return db.Close()
-	}
-	return nil
-}

@@ -6,6 +6,7 @@ export interface Lottery {
   title: string;
   description: string;
   creator_id: number;
+  participants: number;
   draw_mode: "timed" | "full" | "manual";
   draw_time?: string;
   max_entries?: number;
@@ -81,6 +82,7 @@ export interface LotteryResponse {
   title: string;
   description: string;
   creator_id: number;
+  participants: number;
   draw_mode: "timed" | "full" | "manual";
   draw_time?: string;
   max_entries?: number;
@@ -88,8 +90,6 @@ export interface LotteryResponse {
   created_at: string;
   is_weights_disabled?: boolean;
   prizes: Prize[];
-  participants?: Participant[];
-  participant_count?: number;
   winners?: Winner[];
 }
 

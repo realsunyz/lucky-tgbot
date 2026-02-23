@@ -40,10 +40,9 @@ type Notifier interface {
 }
 
 type LotterySnapshot struct {
-	Lottery          *models.Lottery
-	Prizes           []models.Prize
-	ParticipantCount int
-	Winners          []models.Winner
+	Lottery *models.Lottery
+	Prizes  []models.Prize
+	Winners []models.Winner
 }
 
 type CreateLotteryInput struct {
@@ -136,9 +135,8 @@ func (s *LotteryService) GetLotterySnapshot(id string) (*LotterySnapshot, error)
 	}
 
 	snapshot := &LotterySnapshot{
-		Lottery:          lottery,
-		Prizes:           prizes,
-		ParticipantCount: lottery.Participants,
+		Lottery: lottery,
+		Prizes:  prizes,
 	}
 
 	if lottery.Status == "completed" {

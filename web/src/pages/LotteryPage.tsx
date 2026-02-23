@@ -143,7 +143,7 @@ export default function LotteryPage() {
   };
 
   const totalPrizes = lottery.prizes.reduce((acc, p) => acc + p.quantity, 0);
-  const participantCount = lottery.participant_count || 0;
+  const participantCount = lottery.participants || 0;
   const winnerCountByPrizeId = new Map<number, number>();
   const winnerCountByPrizeName = new Map<string, number>();
   (lottery.winners || []).forEach((winner) => {

@@ -60,9 +60,8 @@ type PrizeWeightRequest struct {
 
 type LotteryResponse struct {
 	*models.Lottery
-	Prizes           []models.Prize  `json:"prizes"`
-	ParticipantCount int             `json:"participant_count"`
-	Winners          []models.Winner `json:"winners,omitempty"`
+	Prizes  []models.Prize  `json:"prizes"`
+	Winners []models.Winner `json:"winners,omitempty"`
 }
 
 type Handler struct {
@@ -169,10 +168,9 @@ func (h *Handler) getLottery(c fiber.Ctx) error {
 	}
 
 	return c.JSON(LotteryResponse{
-		Lottery:          snapshot.Lottery,
-		Prizes:           snapshot.Prizes,
-		ParticipantCount: snapshot.ParticipantCount,
-		Winners:          snapshot.Winners,
+		Lottery: snapshot.Lottery,
+		Prizes:  snapshot.Prizes,
+		Winners: snapshot.Winners,
 	})
 }
 

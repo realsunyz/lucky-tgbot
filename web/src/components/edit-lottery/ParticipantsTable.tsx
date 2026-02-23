@@ -437,14 +437,14 @@ function PrizeWeightRow({
   onUpdate: () => Promise<void>;
   onDelete: () => void;
 }) {
-  if (!participant) return null;
-
-  const specificWeight = participant.prize_weights?.[prize.id!];
+  const specificWeight = participant?.prize_weights?.[prize.id!];
   const isSet = specificWeight !== undefined;
 
   const [weight, setWeight] = useState(
-    isSet ? specificWeight.toString() : participant.weight.toString(),
+    isSet ? specificWeight.toString() : participant?.weight?.toString() || "1",
   );
+
+  if (!participant) return null;
 
   const handleSave = async () => {
     const w = parseInt(weight);
@@ -525,14 +525,16 @@ function GlobalWeightRow({
   token: string;
   onUpdate: () => Promise<void>;
 }) {
-  if (!participant) return null;
-
-  const [weight, setWeight] = useState(participant.weight.toString());
+  const [weight, setWeight] = useState(participant?.weight?.toString() || "1");
 
   // Update local state when participant changes
   useEffect(() => {
-    setWeight(participant.weight.toString());
-  }, [participant.weight]);
+    if (participant) {
+      setWeight(participant.weight.toString());
+    }
+  }, [participant?.weight]);
+
+  if (!participant) return null;
 
   const handleSave = async () => {
     const w = parseInt(weight);
