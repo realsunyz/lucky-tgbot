@@ -8,6 +8,8 @@ export const ERROR_MESSAGES: Record<string, string> = {
   ERR_LOTTERY_ENDED: "抽奖已结束",
   ERR_LOTTERY_NOT_ACTIVE: "抽奖活动未开始或已结束",
   ERR_TOKEN_INVALID: "编辑令牌无效或已过期",
+  ERR_RATE_LIMITED: "请求过于频繁",
+  ERR_REQUEST_TIMEOUT: "请求超时",
 };
 
 export const VALIDATION_ERRORS = {

@@ -1,13 +1,22 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"os"
 	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/compress"
+	"github.com/gofiber/fiber/v3/middleware/etag"
+	"github.com/gofiber/fiber/v3/middleware/favicon"
+	"github.com/gofiber/fiber/v3/middleware/healthcheck"
+	"github.com/gofiber/fiber/v3/middleware/limiter"
+	"github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/gofiber/fiber/v3/middleware/static"
+	"github.com/gofiber/fiber/v3/middleware/timeout"
+	"github.com/realSunyz/lucky-tgbot/pkg/database"
 	"github.com/realSunyz/lucky-tgbot/pkg/logger"
 	"github.com/realSunyz/lucky-tgbot/pkg/models"
 	"github.com/realSunyz/lucky-tgbot/pkg/service"
@@ -60,27 +69,63 @@ type Handler struct {
 	service *service.LotteryService
 }
 
+const (
+	writeTimeout     = 8 * time.Second
+	joinLimitMax     = 60
+	joinLimitWindow  = time.Minute
+	editLimitMax     = 30
+	editLimitWindow  = time.Minute
+	drawLimitMax     = 20
+	drawLimitWindow  = time.Minute
+	readinessTimeout = 2 * time.Second
+)
+
 func NewHandler(svc *service.LotteryService) *Handler {
 	return &Handler{service: svc}
+}
+
+func withWriteTimeout(handler fiber.Handler) fiber.Handler {
+	return timeout.New(handler, timeout.Config{
+		Timeout: writeTimeout,
+		OnTimeout: func(c fiber.Ctx) error {
+			return SendError(c, fiber.StatusRequestTimeout, ERR_REQUEST_TIMEOUT, "Request timeout")
+		},
+	})
+}
+
+func lotteryScopedLimiter(max int, expiration time.Duration) fiber.Handler {
+	return limiter.New(limiter.Config{
+		Max:        max,
+		Expiration: expiration,
+		KeyGenerator: func(c fiber.Ctx) string {
+			return c.IP() + "|" + c.Route().Path + "|" + c.Params("id")
+		},
+		LimitReached: func(c fiber.Ctx) error {
+			return SendError(c, fiber.StatusTooManyRequests, ERR_RATE_LIMITED, "Too many requests")
+		},
+	})
 }
 
 func SetupRoutes(app *fiber.App, svc *service.LotteryService) {
 	h := NewHandler(svc)
 	api := app.Group("/api")
+	joinLimiter := lotteryScopedLimiter(joinLimitMax, joinLimitWindow)
+	editLimiter := lotteryScopedLimiter(editLimitMax, editLimitWindow)
+	drawLimiter := lotteryScopedLimiter(drawLimitMax, drawLimitWindow)
 
 	api.Get("/lottery/:id", h.getLottery)
-	api.Post("/lottery/:id", h.createLottery)
-	api.Post("/lottery/:id/join", h.joinLottery)
+	api.Post("/lottery/:id", editLimiter, withWriteTimeout(h.createLottery))
+	api.Post("/lottery/:id/join", joinLimiter, withWriteTimeout(h.joinLottery))
 	api.Get("/lottery/:id/results", h.getResults)
 
-	api.Put("/lottery/:id", h.tokenAuth, h.updateLottery)
+	api.Put("/lottery/:id", editLimiter, h.tokenAuth, withWriteTimeout(h.updateLottery))
 	api.Get("/lottery/:id/participants", h.tokenAuth, h.getParticipants)
-	api.Post("/lottery/:id/participants", h.tokenAuth, h.addParticipant)
-	api.Put("/lottery/:id/participants/:uid", h.tokenAuth, h.updateParticipantWeight)
-	api.Post("/lottery/:id/participants/:uid/prize_weight", h.tokenAuth, h.updatePrizeWeight)
-	api.Delete("/lottery/:id/participants/:uid/prize_weight/:prize_id", h.tokenAuth, h.deletePrizeWeight)
-	api.Delete("/lottery/:id/participants/:uid", h.tokenAuth, h.removeParticipant)
-	api.Post("/lottery/:id/draw", h.tokenAuth, h.drawLottery)
+	api.Post("/lottery/:id/participants", editLimiter, h.tokenAuth, withWriteTimeout(h.addParticipant))
+	api.Put("/lottery/:id/participants/:uid", editLimiter, h.tokenAuth, withWriteTimeout(h.updateParticipantWeight))
+	api.Post("/lottery/:id/participants/:uid/prize_weight", editLimiter, h.tokenAuth, withWriteTimeout(h.updatePrizeWeight))
+	api.Delete("/lottery/:id/participants/:uid/prize_weight/:prize_id", editLimiter, h.tokenAuth, withWriteTimeout(h.deletePrizeWeight))
+	api.Delete("/lottery/:id/participants/:uid", editLimiter, h.tokenAuth, withWriteTimeout(h.removeParticipant))
+	api.Post("/lottery/:id/draw", drawLimiter, h.tokenAuth, withWriteTimeout(h.drawLottery))
 }
 
 func (h *Handler) tokenAuth(c fiber.Ctx) error {
@@ -416,6 +461,20 @@ func (h *Handler) drawLottery(c fiber.Ctx) error {
 
 func StartServer(svc *service.LotteryService) {
 	app := fiber.New(fiber.Config{AppName: "Lucky TG Bot API"})
+	app.Use(recover.New())
+	app.Use(compress.New(compress.Config{Level: compress.LevelBestSpeed}))
+	app.Use(etag.New())
+	app.Use(favicon.New(favicon.Config{File: "./web/dist/favicon.ico"}))
+
+	app.Get(healthcheck.LivenessEndpoint, healthcheck.New())
+	app.Get(healthcheck.ReadinessEndpoint, healthcheck.New(healthcheck.Config{
+		Probe: func(c fiber.Ctx) bool {
+			ctx, cancel := context.WithTimeout(c.Context(), readinessTimeout)
+			defer cancel()
+			return database.GetDB().PingContext(ctx) == nil
+		},
+	}))
+
 	app.Use("/assets", static.New("./web/dist/assets"))
 	SetupRoutes(app, svc)
 	app.Get("/*", func(c fiber.Ctx) error {

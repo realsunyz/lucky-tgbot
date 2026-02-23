@@ -17,6 +17,8 @@ const (
 	ERR_LOTTERY_ENDED      = "ERR_LOTTERY_ENDED"
 	ERR_LOTTERY_NOT_ACTIVE = "ERR_LOTTERY_NOT_ACTIVE"
 	ERR_TOKEN_INVALID      = "ERR_TOKEN_INVALID"
+	ERR_RATE_LIMITED       = "ERR_RATE_LIMITED"
+	ERR_REQUEST_TIMEOUT    = "ERR_REQUEST_TIMEOUT"
 )
 
 func SendError(c fiber.Ctx, status int, code string, message string) error {
