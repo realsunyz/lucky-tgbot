@@ -46,11 +46,11 @@ func GetLotteryStats() (*models.LotteryStats, error) {
 	err := db.QueryRow(`
 		SELECT 
 			COUNT(*) as total_count,
-			SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END) as draft_count,
-			SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active_count,
-			SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_count,
-			SUM(CASE WHEN status = 'active' AND draw_mode = 'timed' AND draw_time > ? THEN 1 ELSE 0 END) as scheduled_count,
-			SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as today_count
+			COALESCE(SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END), 0) as draft_count,
+			COALESCE(SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END), 0) as active_count,
+			COALESCE(SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END), 0) as completed_count,
+			COALESCE(SUM(CASE WHEN status = 'active' AND draw_mode = 'timed' AND draw_time > ? THEN 1 ELSE 0 END), 0) as scheduled_count,
+			COALESCE(SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END), 0) as today_count
 		FROM lotteries
 	`, now, dayStart).Scan(
 		&stats.TotalCount,

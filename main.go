@@ -28,6 +28,9 @@ func main() {
 	r := rand.New(source)
 
 	opts := []bot.Option{
+		bot.WithErrorsHandler(func(err error) {
+			logger.Errorf("%v", err)
+		}),
 		bot.WithDefaultHandler(func(ctx context.Context, b *bot.Bot, update *models.Update) {
 			if update.Message == nil {
 				return
