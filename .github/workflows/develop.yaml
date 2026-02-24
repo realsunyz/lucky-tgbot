@@ -16,21 +16,13 @@ env:
 
 jobs:
   docker-dev:
-    name: Build Docker Image (${{ matrix.goarch }})
+    name: Build Docker Image
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
       attestations: write
       id-token: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - goarch: amd64
-            platform: linux/amd64
-          - goarch: arm64
-            platform: linux/arm64
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -62,15 +54,15 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          platforms: ${{ matrix.platform }}
+          platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
-            ${{ env.VULTR_REGISTRY }}/${{ env.VULTR_IMAGE_NAME }}:dev-${{ matrix.goarch }}
-            ${{ env.VULTR_REGISTRY }}/${{ env.VULTR_IMAGE_NAME }}:dev-${{ github.sha }}-${{ matrix.goarch }}
-            ghcr.io/${{ env.GHCR_IMAGE_NAME }}:dev-${{ matrix.goarch }}
-            ghcr.io/${{ env.GHCR_IMAGE_NAME }}:dev-${{ github.sha }}-${{ matrix.goarch }}
-          cache-from: type=gha,scope=dev-${{ matrix.goarch }}
-          cache-to: type=gha,mode=max,scope=dev-${{ matrix.goarch }}
+            ${{ env.VULTR_REGISTRY }}/${{ env.VULTR_IMAGE_NAME }}:dev
+            ${{ env.VULTR_REGISTRY }}/${{ env.VULTR_IMAGE_NAME }}:dev-${{ github.sha }}
+            ghcr.io/${{ env.GHCR_IMAGE_NAME }}:dev
+            ghcr.io/${{ env.GHCR_IMAGE_NAME }}:dev-${{ github.sha }}
+          cache-from: type=gha,scope=dev-amd64
+          cache-to: type=gha,mode=max,scope=dev-amd64
 
       - name: Generate Artifact Attestation (GHCR)
         if: github.event_name != 'pull_request'
@@ -89,45 +81,3 @@ jobs:
           subject-name: ${{ env.VULTR_REGISTRY }}/${{ env.VULTR_IMAGE_NAME }}
           subject-digest: ${{ steps.image.outputs.digest }}
           push-to-registry: true
-
-  docker-dev-manifest:
-    name: Merge Docker Manifests
-    runs-on: ubuntu-latest
-    needs: docker-dev
-    if: github.event_name != 'pull_request'
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login in to Vultr Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.VULTR_REGISTRY }}
-          username: ${{ secrets.VULTR_USERNAME }}
-          password: ${{ secrets.VULTR_PASSWORD }}
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Merge Vultr manifest
-        run: |
-          docker buildx imagetools create \
-            -t ${{ env.VULTR_REGISTRY }}/${{ env.VULTR_IMAGE_NAME }}:dev \
-            -t ${{ env.VULTR_REGISTRY }}/${{ env.VULTR_IMAGE_NAME }}:dev-${{ github.sha }} \
-            ${{ env.VULTR_REGISTRY }}/${{ env.VULTR_IMAGE_NAME }}:dev-${{ github.sha }}-amd64 \
-            ${{ env.VULTR_REGISTRY }}/${{ env.VULTR_IMAGE_NAME }}:dev-${{ github.sha }}-arm64
-
-      - name: Merge GHCR manifest
-        run: |
-          docker buildx imagetools create \
-            -t ghcr.io/${{ env.GHCR_IMAGE_NAME }}:dev \
-            -t ghcr.io/${{ env.GHCR_IMAGE_NAME }}:dev-${{ github.sha }} \
-            ghcr.io/${{ env.GHCR_IMAGE_NAME }}:dev-${{ github.sha }}-amd64 \
-            ghcr.io/${{ env.GHCR_IMAGE_NAME }}:dev-${{ github.sha }}-arm64
